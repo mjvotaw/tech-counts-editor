@@ -302,6 +302,10 @@ export const MENUBAR_DATA: { [key: string]: MenuMain } = {
         type: "selection",
         id: "timingDataRow",
       },
+      {
+        type: "selection",
+        id: "editParityStuff",
+      },
     ],
   },
   selection: {

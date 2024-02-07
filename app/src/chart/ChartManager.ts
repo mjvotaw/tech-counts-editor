@@ -1783,6 +1783,11 @@ export class ChartManager {
     }
   }
 
+  getSelection(): Notedata {
+    if (!this.loadedChart) return []
+    return this.selection.notes
+  }
+
   modifySelection(modify: (note: NotedataEntry) => PartialNotedataEntry) {
     if (!this.loadedChart) return
     const selectionNotes = this.selection.notes

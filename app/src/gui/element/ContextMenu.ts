@@ -78,6 +78,35 @@ export class ContextMenuPopup {
       MENUBAR_DATA["selection"].options.slice(0, -2).forEach(option => {
         menu.appendChild(this.createElement(app, option))
       })
+
+      if (
+        window.Parity?.getIsEnabled() &&
+        app.chartManager.selection.notes.length == 1
+      ) {
+        const menuOption: MenuOption = {
+          type: "dropdown",
+          title: "Set Parity",
+          options: [
+            {
+              type: "selection",
+              id: "parityLeftHeel",
+            },
+            {
+              type: "selection",
+              id: "parityLeftToe",
+            },
+            {
+              type: "selection",
+              id: "parityRightHeel",
+            },
+            {
+              type: "selection",
+              id: "parityRightToe",
+            },
+          ],
+        }
+        menu.appendChild(this.createElement(app, menuOption))
+      }
     }
     this.menuElement = menu
     menu.id = "context-menu"

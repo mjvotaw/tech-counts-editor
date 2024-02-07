@@ -13,6 +13,7 @@ import { OffsetWindow } from "../gui/window/OffsetWindow"
 import { SMPropertiesWindow } from "../gui/window/SMPropertiesWindow"
 import { SyncWindow } from "../gui/window/SyncWindow"
 import { TimingDataWindow } from "../gui/window/TimingDataWindow"
+import { ParityEditWindow } from "../gui/window/ParityEditWindow"
 import { UserOptionsWindow } from "../gui/window/UserOptionsWindow"
 import { ActionHistory } from "../util/ActionHistory"
 import { Flags } from "../util/Flags"
@@ -277,6 +278,14 @@ export const KEYBIND_DATA: { [key: string]: Keybind } = {
     combos: [{ key: "T", mods: [Modifier.SHIFT] }],
     disabled: app => !app.chartManager.chartView || !Flags.openWindows,
     callback: app => app.windowManager.openWindow(new TimingDataWindow(app)),
+  },
+  editParityStuff: {
+    label: "Edit Parity Stuff (experimental)",
+    combos: [],
+    disabled: app => !app.chartManager.chartView || !Flags.openWindows,
+    callback: app => {
+      app.windowManager.openWindow(new ParityEditWindow(app))
+    },
   },
   selectRegion: {
     label: "Select region",
@@ -1129,6 +1138,74 @@ export const KEYBIND_DATA: { [key: string]: Keybind } = {
         note.beat = Math.round(note.beat * 48) / 48
         return note
       })
+    },
+  },
+  parityLeftHeel: {
+    label: "Left Heel",
+    bindLabel: "Parity Left Heel",
+    combos: [],
+    disabled: app =>
+      window.Parity?.getIsEnabled() == false ||
+      app.chartManager.selection.notes.length != 1,
+    callback: app => {
+      const notes = app.chartManager.getSelection()
+      if (notes.length != 1) {
+        return
+      }
+      if (window.Parity?.addNoteOverride(notes[0].beat, notes[0].col, 1)) {
+        window.Parity?.analyze()
+      }
+    },
+  },
+  parityLeftToe: {
+    label: "Left Toe",
+    bindLabel: "Parity Left Toe",
+    combos: [],
+    disabled: app =>
+      window.Parity?.getIsEnabled() == false ||
+      app.chartManager.selection.notes.length != 1,
+    callback: app => {
+      const notes = app.chartManager.getSelection()
+      if (notes.length != 1) {
+        return
+      }
+      if (window.Parity?.addNoteOverride(notes[0].beat, notes[0].col, 2)) {
+        window.Parity?.analyze()
+      }
+    },
+  },
+  parityRightHeel: {
+    label: "Right Heel",
+    bindLabel: "Parity Right Heel",
+    combos: [],
+    disabled: app =>
+      window.Parity?.getIsEnabled() == false ||
+      app.chartManager.selection.notes.length != 1,
+    callback: app => {
+      const notes = app.chartManager.getSelection()
+      if (notes.length != 1) {
+        return
+      }
+      if (window.Parity?.addNoteOverride(notes[0].beat, notes[0].col, 3)) {
+        window.Parity?.analyze()
+      }
+    },
+  },
+  parityRightToe: {
+    label: "Right Toe",
+    bindLabel: "Parity Right Toe",
+    combos: [],
+    disabled: app =>
+      window.Parity?.getIsEnabled() == false ||
+      app.chartManager.selection.notes.length != 1,
+    callback: app => {
+      const notes = app.chartManager.getSelection()
+      if (notes.length != 1) {
+        return
+      }
+      if (window.Parity?.addNoteOverride(notes[0].beat, notes[0].col, 4)) {
+        window.Parity?.analyze()
+      }
     },
   },
   delete: {

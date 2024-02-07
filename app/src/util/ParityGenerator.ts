@@ -18,22 +18,6 @@ const LAYOUT: Record<string, Point[]> = {
   ],
 }
 
-const WEIGHTS = {
-  DOUBLESTEP: 850,
-  BRACKETJACK: 20,
-  JACK: 30,
-  JUMP: 30,
-  BRACKETTAP: 400,
-  HOLDSWITCH: 20,
-  MINE: 10000,
-  FOOTSWITCH: 5000,
-  MISSED_FOOTSWITCH: 500,
-  FACING: 2,
-  DISTANCE: 6,
-  SPIN: 1000,
-  SIDESWITCH: 130,
-}
-
 interface Point {
   x: number
   y: number
@@ -50,14 +34,6 @@ enum Foot {
 const FEET = [Foot.LEFT_HEEL, Foot.LEFT_TOE, Foot.RIGHT_HEEL, Foot.RIGHT_TOE]
 const FEET_LABEL = "LlRr"
 
-interface Action {
-  head?: Action
-  parent?: Action
-  initialState: State
-  resultState: State
-  cost: number
-}
-
 interface State {
   columns: Foot[]
   movedFeet: Set<Foot>
@@ -73,6 +49,7 @@ interface Row {
   mines: (number | undefined)[]
   fakeMines: (number | undefined)[]
   second: number
+  beat: number
 }
 
 // A node within a StepParityGraph.
@@ -131,6 +108,41 @@ export class ParityGenerator {
   private readonly app
   private permuteCache: Map<number, Foot[][]> = new Map()
   private readonly layout
+  private isEnabled: boolean = false
+
+  private rowOverrides: { [key: number]: Foot[] } = {}
+
+  private DEFAULT_WEIGHTS: { [key: string]: number } = {
+    DOUBLESTEP: 850,
+    BRACKETJACK: 20,
+    JACK: 30,
+    JUMP: 30,
+    BRACKETTAP: 400,
+    HOLDSWITCH: 20,
+    MINE: 10000,
+    FOOTSWITCH: 5000,
+    MISSED_FOOTSWITCH: 500,
+    FACING: 2,
+    DISTANCE: 6,
+    SPIN: 1000,
+    SIDESWITCH: 130,
+  }
+
+  private WEIGHTS: { [key: string]: number } = {
+    DOUBLESTEP: 850,
+    BRACKETJACK: 20,
+    JACK: 30,
+    JUMP: 30,
+    BRACKETTAP: 400,
+    HOLDSWITCH: 20,
+    MINE: 10000,
+    FOOTSWITCH: 5000,
+    MISSED_FOOTSWITCH: 500,
+    FACING: 2,
+    DISTANCE: 6,
+    SPIN: 1000,
+    SIDESWITCH: 130,
+  }
 
   constructor(app: App, type: string) {
     this.app = app
@@ -140,15 +152,8 @@ export class ParityGenerator {
   help() {
     console.log(`Currently only compatible with dance-single.
 Available commands: 
-analyze(options): analyze the current chart
-  options: {
-    log = false: do logging with intermediate steps
-    delay = 0: delay in ms between each row (set to 0 for instant)
-    searchDepth = 16: number of lookahead rows
-    searchBreadth = 30: number of candidates kept at each lookahead step
-  }
-  leave options blank for default
-stopAnalyzing(): stop analysis in case something goes wrong
+analyze(): analyze the current chart
+  
 clear(): clear parity highlights`)
   }
 
@@ -162,6 +167,10 @@ clear(): clear parity highlights`)
     const elapsedTime = resultState.second - initialState.second
     let cost = 0
 
+    const costs = JSON.parse(JSON.stringify(this.WEIGHTS))
+    for (const t in costs) {
+      costs[t] = 0
+    }
     const combinedColumns: Foot[] = new Array(resultState.columns.length).fill(
       Foot.NONE
     )
@@ -219,7 +228,8 @@ clear(): clear parity highlights`)
           break
       }
       if (combinedColumns[i] != Foot.NONE && row.mines[i] !== undefined) {
-        cost += WEIGHTS.MINE
+        costs["MINE"] += this.WEIGHTS.MINE
+        cost += this.WEIGHTS.MINE
         break
       }
     }
@@ -237,13 +247,15 @@ clear(): clear parity highlights`)
           initialState.columns[c] != Foot.RIGHT_HEEL)
       ) {
         const previousFoot = initialState.columns.indexOf(combinedColumns[c])
-        cost +=
-          WEIGHTS.HOLDSWITCH *
+        const tempcost =
+          this.WEIGHTS.HOLDSWITCH *
           (previousFoot == -1
             ? 1
             : Math.sqrt(
                 this.getDistanceSq(this.layout[c], this.layout[previousFoot])
               ))
+        costs["HOLDSWITCH"] += tempcost
+        cost += tempcost
       }
     }
 
@@ -259,13 +271,13 @@ clear(): clear parity highlights`)
         row.holds[leftHeel] !== undefined &&
         row.holds[leftToe] === undefined
       ) {
-        cost += WEIGHTS.BRACKETTAP * jackPenalty
+        cost += this.WEIGHTS.BRACKETTAP * jackPenalty
       }
       if (
         row.holds[leftToe] !== undefined &&
         row.holds[leftHeel] === undefined
       ) {
-        cost += WEIGHTS.BRACKETTAP * jackPenalty
+        cost += this.WEIGHTS.BRACKETTAP * jackPenalty
       }
     }
 
@@ -281,13 +293,13 @@ clear(): clear parity highlights`)
         row.holds[rightHeel] !== undefined &&
         row.holds[rightToe] === undefined
       ) {
-        cost += WEIGHTS.BRACKETTAP * jackPenalty
+        cost += this.WEIGHTS.BRACKETTAP * jackPenalty
       }
       if (
         row.holds[rightToe] !== undefined &&
         row.holds[rightHeel] === undefined
       ) {
-        cost += WEIGHTS.BRACKETTAP * jackPenalty
+        cost += this.WEIGHTS.BRACKETTAP * jackPenalty
       }
     }
 
@@ -445,7 +457,7 @@ clear(): clear parity highlights`)
 				}*/
 
       if (doublestepped) {
-        cost += WEIGHTS.DOUBLESTEP
+        cost += this.WEIGHTS.DOUBLESTEP
       }
 
       if (
@@ -453,7 +465,7 @@ clear(): clear parity highlights`)
         resultState.movedFeet.has(Foot.LEFT_HEEL) &&
         resultState.movedFeet.has(Foot.LEFT_TOE)
       ) {
-        cost += WEIGHTS.BRACKETJACK
+        cost += this.WEIGHTS.BRACKETJACK
       }
 
       if (
@@ -461,7 +473,7 @@ clear(): clear parity highlights`)
         resultState.movedFeet.has(Foot.RIGHT_HEEL) &&
         resultState.movedFeet.has(Foot.RIGHT_TOE)
       ) {
-        cost += WEIGHTS.BRACKETJACK
+        cost += this.WEIGHTS.BRACKETJACK
       }
     }
 
@@ -470,7 +482,7 @@ clear(): clear parity highlights`)
       movedRight &&
       row.notes.filter(note => note !== undefined).length >= 2
     ) {
-      cost += WEIGHTS.JUMP / elapsedTime
+      cost += this.WEIGHTS.JUMP / elapsedTime
     }
 
     let endLeftHeel = -1
@@ -522,10 +534,10 @@ clear(): clear parity highlights`)
     const leftFacingPenalty = Math.pow(-Math.min(leftFacing, 0), 1.8) * 100
     const rightFacingPenalty = Math.pow(-Math.min(rightFacing, 0), 1.8) * 100
 
-    if (heelFacingPenalty > 0) cost += heelFacingPenalty * WEIGHTS.FACING
-    if (toesFacingPenalty > 0) cost += toesFacingPenalty * WEIGHTS.FACING
-    if (leftFacingPenalty > 0) cost += leftFacingPenalty * WEIGHTS.FACING
-    if (rightFacingPenalty > 0) cost += rightFacingPenalty * WEIGHTS.FACING
+    if (heelFacingPenalty > 0) cost += heelFacingPenalty * this.WEIGHTS.FACING
+    if (toesFacingPenalty > 0) cost += toesFacingPenalty * this.WEIGHTS.FACING
+    if (leftFacingPenalty > 0) cost += leftFacingPenalty * this.WEIGHTS.FACING
+    if (rightFacingPenalty > 0) cost += rightFacingPenalty * this.WEIGHTS.FACING
 
     // spin
     const previousLeftPos = this.averagePoint(
@@ -545,7 +557,7 @@ clear(): clear parity highlights`)
       rightPos.y < leftPos.y &&
       previousRightPos.y > previousLeftPos.y
     ) {
-      cost += WEIGHTS.SPIN
+      cost += this.WEIGHTS.SPIN
     }
     if (
       rightPos.x < leftPos.x &&
@@ -553,7 +565,7 @@ clear(): clear parity highlights`)
       rightPos.y > leftPos.y &&
       previousRightPos.y < previousLeftPos.y
     ) {
-      cost += WEIGHTS.SPIN
+      cost += this.WEIGHTS.SPIN
     }
 
     // if (
@@ -562,7 +574,7 @@ clear(): clear parity highlights`)
     //   rightPos.x > leftPos.x &&
     //   previousRightPos.x < previousLeftPos.x
     // ) {
-    //   cost += WEIGHTS.SPIN
+    //   cost += this.WEIGHTS.SPIN
     // }
 
     // Footswitch penalty
@@ -587,7 +599,7 @@ clear(): clear parity highlights`)
             initialState.columns[i] != resultState.columns[i] &&
             !resultState.movedFeet.has(initialState.columns[i])
           ) {
-            cost += Math.pow(timeScaled / 2.0, 2) * WEIGHTS.FOOTSWITCH
+            cost += Math.pow(timeScaled / 2.0, 2) * this.WEIGHTS.FOOTSWITCH
             break
           }
         }
@@ -600,7 +612,7 @@ clear(): clear parity highlights`)
       initialState.columns[0] != Foot.NONE &&
       !resultState.movedFeet.has(initialState.columns[0])
     ) {
-      cost += WEIGHTS.SIDESWITCH
+      cost += this.WEIGHTS.SIDESWITCH
     }
 
     if (
@@ -609,7 +621,7 @@ clear(): clear parity highlights`)
       initialState.columns[3] != Foot.NONE &&
       !resultState.movedFeet.has(initialState.columns[3])
     ) {
-      cost += WEIGHTS.SIDESWITCH
+      cost += this.WEIGHTS.SIDESWITCH
     }
 
     // add penalty if jacked
@@ -619,7 +631,7 @@ clear(): clear parity highlights`)
       (row.mines.some(x => x !== undefined) ||
         row.fakeMines.some(x => x !== undefined))
     ) {
-      cost += WEIGHTS.MISSED_FOOTSWITCH
+      cost += this.WEIGHTS.MISSED_FOOTSWITCH
     }
 
     // To do: small weighting for swapping heel with toe or toe with heel (both add up)
@@ -630,7 +642,7 @@ clear(): clear parity highlights`)
     if (elapsedTime <= 0.15 && movedLeft != movedRight) {
       const timeScaled = 0.15 - elapsedTime
       if (jackedLeft || jackedRight) {
-        cost += (1 / timeScaled - 1 / 0.15) * WEIGHTS.JACK
+        cost += (1 / timeScaled - 1 / 0.15) * this.WEIGHTS.JACK
       }
     }
 
@@ -645,7 +657,7 @@ clear(): clear parity highlights`)
             this.layout[resultState.columns.indexOf(foot)]
           )
         ) *
-          WEIGHTS.DISTANCE) /
+          this.WEIGHTS.DISTANCE) /
         elapsedTime
     }
 
@@ -772,7 +784,13 @@ clear(): clear parity highlights`)
             mines: nextMines,
             fakeMines: nextFakeMines,
             second: lastColumnSecond,
+            beat: this.app.chartManager.loadedChart!.timingData.getBeatFromSeconds(
+              lastColumnSecond
+            ),
           })
+          this.app.chartManager.loadedChart!.timingData.getBeatFromSeconds(
+            lastColumnSecond
+          )
         }
         lastColumnSecond = note.second
         notes = []
@@ -820,7 +838,11 @@ clear(): clear parity highlights`)
       mines: nextMines,
       fakeMines: nextFakeMines,
       second: lastColumnSecond!,
+      beat: this.app.chartManager.loadedChart!.timingData.getBeatFromSeconds(
+        lastColumnSecond!
+      ),
     })
+
     return rows
   }
 
@@ -873,7 +895,12 @@ clear(): clear parity highlights`)
       while (previousStates.length > 0) {
         const state = previousStates.shift()!
         const initialNode = graph.addOrGetExistingNode(state)
-        const permuteColumns = this.getPermuteColumns(rows[i])
+        let permuteColumns: Foot[][] = []
+        if (this.hasRowOverride(rows[i].beat)) {
+          permuteColumns.push(this.getRowOverride(rows[i].beat))
+        } else {
+          permuteColumns = this.getPermuteColumns(rows[i])
+        }
         for (const columns of permuteColumns) {
           const resultState: State = this.initResultState(
             state,
@@ -979,6 +1006,59 @@ clear(): clear parity highlights`)
     return shortest_path
   }
 
+  setEnabled(enabled: boolean) {
+    this.isEnabled = enabled
+  }
+
+  getIsEnabled(): boolean {
+    return this.isEnabled
+  }
+
+  hasRowOverride(beat: number): boolean {
+    return this.rowOverrides[beat] != undefined
+  }
+
+  getRowOverride(beat: number): Foot[] {
+    return this.rowOverrides[beat]
+  }
+
+  addNoteOverride(beat: number, col: number, foot: Foot): boolean {
+    if (this.rowOverrides[beat] == undefined) {
+      this.rowOverrides[beat] = new Array(this.layout.length).fill(Foot.NONE)
+    }
+
+    this.rowOverrides[beat][col] = foot
+    return true
+  }
+
+  addRowOverride(beat: number, feet: Foot[]): boolean {
+    const footCount: { [key: number]: number } = {}
+    let totalCount = 0
+    for (const foot of feet) {
+      footCount[foot] = (footCount[foot] || 0) + 1
+      totalCount += 1
+      if (foot != Foot.NONE && footCount[foot] > 1) {
+        return false
+      }
+    }
+    if (totalCount == 0) {
+      return false
+    }
+
+    this.rowOverrides[beat] = feet
+    return true
+  }
+
+  removeRowOverride(beat: number, col: number) {
+    if (this.rowOverrides[beat] != undefined) {
+      this.rowOverrides[beat][col] = 0
+    }
+  }
+
+  resetRowOverrides() {
+    this.rowOverrides = {}
+  }
+
   bracketCheck(column1: number, column2: number) {
     const p1 = this.layout[column1]
     const p2 = this.layout[column2]
@@ -1062,14 +1142,30 @@ clear(): clear parity highlights`)
     }
   }
 
-  stopAnalyzing() {
-    this.stop = true
-  }
-
   clear() {
     const notedata = this.app.chartManager.loadedChart?.getNotedata()
     if (!notedata) return
     notedata.forEach(note => (note.parity = undefined))
+  }
+
+  getWeights(): { [key: string]: number } {
+    const weightsCopy: { [key: string]: number } = JSON.parse(
+      JSON.stringify(this.WEIGHTS)
+    )
+    return weightsCopy
+  }
+
+  getDefaultWeights(): { [key: string]: number } {
+    const weightsCopy: { [key: string]: number } = JSON.parse(
+      JSON.stringify(this.DEFAULT_WEIGHTS)
+    )
+    return weightsCopy
+  }
+
+  updateWeights(newWeights: { [key: string]: number }) {
+    for (const k in this.WEIGHTS) {
+      this.WEIGHTS[k] = newWeights[k] || this.WEIGHTS[k]
+    }
   }
 }
 
