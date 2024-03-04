@@ -16,6 +16,17 @@ const LAYOUT: Record<string, Point[]> = {
     { x: 0, y: 1 },
     { x: 1, y: 0 },
   ],
+  "dance-double": [
+    { x: -1, y: 0 },
+    { x: -0.7, y: -1 },
+    { x: -0.7, y: 1 },
+    { x: -0.2, y: 0 },
+
+    { x: 0.2, y: 0 },
+    { x: 0.7, y: -1 },
+    { x: 0.7, y: 1 },
+    { x: 1, y: 0 },
+  ],
 }
 
 interface Point {
@@ -38,6 +49,16 @@ interface State {
   columns: Foot[]
   movedFeet: Set<Foot>
   holdFeet: Set<Foot>
+  second: number
+  rowIndex: number
+}
+
+// because sets aren't serializable, this is an intermediate
+// interface for States
+interface SerializableState {
+  columns: Foot[]
+  movedFeet: Foot[]
+  holdFeet: Foot[]
   second: number
   rowIndex: number
 }
@@ -111,6 +132,8 @@ export class ParityGenerator {
   private isEnabled: boolean = false
 
   private rowOverrides: { [key: number]: Foot[] } = {}
+  private lastGraph?: StepParityGraph
+  private lastStates?: State[]
 
   private DEFAULT_WEIGHTS: { [key: string]: number } = {
     DOUBLESTEP: 850,
@@ -668,7 +691,7 @@ clear(): clear parity highlights`)
 
   calculatePermuteColumnKey(row: Row): number {
     let permuteCacheKey = 0
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < this.layout.length; i++) {
       if (row.notes[i] !== undefined || row.holds[i] !== undefined) {
         permuteCacheKey += Math.pow(2, i)
       }
@@ -680,7 +703,11 @@ clear(): clear parity highlights`)
     const cacheKey = this.calculatePermuteColumnKey(row)
     let permuteColumns = this.permuteCache.get(cacheKey)
     if (permuteColumns == undefined) {
-      permuteColumns = this.permuteColumn(row, new Array(4).fill(Foot.NONE), 0)
+      permuteColumns = this.permuteColumn(
+        row,
+        new Array(this.layout.length).fill(Foot.NONE),
+        0
+      )
       this.permuteCache.set(cacheKey, permuteColumns)
     }
     return this.permuteCache.get(cacheKey)!
@@ -848,11 +875,78 @@ clear(): clear parity highlights`)
 
   analyze() {
     const notedata = this.app.chartManager.loadedChart?.getNotedata()
-    if (!notedata) return []
+    if (!notedata) return
     const rows = this.createRows(notedata)
 
     const graph = this.buildStateGraph(rows)
-    this.analyzeGraph(rows, graph)
+    const states = this.selectStatesForRows(graph, rows.length)
+    this.setNoteParity(rows, states)
+    this.lastGraph = graph
+    this.lastStates = states
+    // this.analyzeGraph(rows, graph)
+  }
+
+  loadParityData(jsonString: string) {
+    const notedata = this.app.chartManager.loadedChart?.getNotedata()
+    if (!notedata) return
+    const rows = this.createRows(notedata)
+    this.lastStates = this.deserializePartyData(jsonString)
+    this.setNoteParity(rows, this.lastStates)
+  }
+  serializeParityData(): string {
+    if (this.lastStates) {
+      const serializableStates: Array<SerializableState> = []
+
+      for (const state of this.lastStates) {
+        serializableStates.push({
+          columns: state.columns,
+          movedFeet: [...state.movedFeet],
+          holdFeet: [...state.holdFeet],
+          second: state.second,
+          rowIndex: state.rowIndex,
+        })
+      }
+      return JSON.stringify(serializableStates)
+    } else {
+      return "[]"
+    }
+  }
+
+  deserializePartyData(jsonString: string): State[] {
+    const deserializedStates: Array<SerializableState> = JSON.parse(jsonString)
+    const states: State[] = []
+    for (const s of deserializedStates) {
+      states.push({
+        columns: s.columns,
+        movedFeet: new Set(s.movedFeet),
+        holdFeet: new Set(s.holdFeet),
+        second: s.second,
+        rowIndex: s.rowIndex,
+      })
+    }
+    return states
+  }
+
+  selectStatesForRows(graph: StepParityGraph, rowCount: number): State[] {
+    const nodes_for_rows = this.computeCheapestPath(graph)
+    const states: State[] = []
+    for (let i = 0; i < rowCount; i++) {
+      const node = graph.nodes[nodes_for_rows[i]]
+      states.push(node.state)
+    }
+
+    return states
+  }
+
+  setNoteParity(rows: Row[], states: State[]) {
+    for (let i = 0; i < rows.length; i++) {
+      const state = states[i]
+      for (let j = 0; j < this.layout.length; j++) {
+        if (rows[i].notes[j]) {
+          rows[i].notes[j]!.parity = FEET_LABEL[FEET.indexOf(state.columns[j])]
+        }
+      }
+    }
   }
 
   // Analyzes the given graph to find the least costly path from the
@@ -862,7 +956,7 @@ clear(): clear parity highlights`)
     const nodes_for_rows = this.computeCheapestPath(graph)
     for (let i = 0; i < rows.length; i++) {
       const node = graph.nodes[nodes_for_rows[i]]
-      for (let j = 0; j < 4; j++) {
+      for (let j = 0; j < this.layout.length; j++) {
         if (rows[i].notes[j]) {
           rows[i].notes[j]!.parity =
             FEET_LABEL[FEET.indexOf(node.state.columns[j])]
@@ -959,7 +1053,7 @@ clear(): clear parity highlights`)
       holdFeet: new Set(),
     }
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < this.layout.length; i++) {
       if (columns[i] == undefined) {
         continue
       }

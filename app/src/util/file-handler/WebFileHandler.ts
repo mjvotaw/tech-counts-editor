@@ -349,18 +349,22 @@ export class WebFileHandler implements BaseFileHandler {
       if (!window.showSaveFilePicker) {
         // showSaveFilePicker bugged on FF
         console.log(blob)
-        const downloadelem = document.createElement("a")
-        const url = URL.createObjectURL(blob)
-        document.body.appendChild(downloadelem)
-        downloadelem.href = url
-        downloadelem.download = dirName + ".zip"
-        downloadelem.click()
-        downloadelem.remove()
-        window.URL.revokeObjectURL(url)
+        this.saveBlob(blob, dirName + ".zip")
         return
       }
       await this.writeHandle(fileHandle, blob)
     })
+  }
+
+  saveBlob(blob: Blob, filename: string) {
+    const downloadelem = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    document.body.appendChild(downloadelem)
+    downloadelem.href = url
+    downloadelem.download = filename
+    downloadelem.click()
+    downloadelem.remove()
+    window.URL.revokeObjectURL(url)
   }
 
   async renameFile(path: string, pathTo: string) {

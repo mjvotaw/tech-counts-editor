@@ -789,14 +789,15 @@ export class ChartManager {
     EventHandler.emit("audioLoaded")
     EventHandler.emit("chartModified")
 
-    if (this.loadedChart.gameType.id == "dance-single") {
-      window.Parity = new ParityGenerator(
-        this.app,
-        this.loadedChart.gameType.id
-      )
-    } else {
-      window.Parity = undefined
-    }
+    window.Parity = new ParityGenerator(this.app, this.loadedChart.gameType.id)
+    // if (this.loadedChart.gameType.id == "dance-single") {
+    //   window.Parity = new ParityGenerator(
+    //     this.app,
+    //     this.loadedChart.gameType.id
+    //   )
+    // } else {
+    //   window.Parity = undefined
+    // }
 
     if (Flags.autoPlay) {
       this.playPause()

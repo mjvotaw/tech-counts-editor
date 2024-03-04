@@ -1,6 +1,10 @@
 import { App } from "../../App"
 import { NumberSpinner } from "../element/NumberSpinner"
+import { WaterfallManager } from "../element/WaterfallManager"
 import { Window } from "./Window"
+import { basename, dirname, extname } from "../../util/Path"
+import { FileHandler } from "../../util/file-handler/FileHandler"
+import { WebFileHandler } from "../../util/file-handler/WebFileHandler"
 
 export class ParityEditWindow extends Window {
   app: App
@@ -69,6 +73,15 @@ export class ParityEditWindow extends Window {
       this.updateParity()
     }
     padding.appendChild(resetButton)
+
+    const saveButton = document.createElement("button")
+    saveButton.innerText = "Save"
+    saveButton.onclick = () => {
+      this.saveParity()
+    }
+
+    padding.appendChild(saveButton)
+
     this.viewElement.appendChild(padding)
     this.updateParity()
   }
@@ -81,5 +94,43 @@ export class ParityEditWindow extends Window {
   updateParity() {
     window.Parity?.updateWeights(this.currentWeights)
     window.Parity?.analyze()
+  }
+
+  async saveParity() {
+    if (window.Parity == undefined) {
+      return
+    }
+    const parityJson = window.Parity.serializeParityData()
+    const smPath = this.app.chartManager.smPath
+    const dir = dirname(smPath)
+    const baseName = basename(smPath)
+    const fileName = baseName.includes(".")
+      ? baseName.split(".").slice(0, -1).join(".")
+      : baseName
+
+    const jsonFilename = fileName + "-parity.json"
+    const jsonPath = dir + "/" + jsonFilename
+
+    console.log(`saving parity data to  ${jsonPath}`)
+
+    let error: string | null = null
+    if (await FileHandler.getFileHandle(jsonPath, { create: true })) {
+      await FileHandler.writeFile(jsonPath, parityJson).catch(err => {
+        const message = err.message
+        error = message
+      })
+
+      const blob = new Blob([parityJson], { type: "application/json" })
+      ;(FileHandler.getStandardHandler() as WebFileHandler).saveBlob(
+        blob,
+        jsonFilename
+      )
+    }
+
+    if (error == null) {
+      WaterfallManager.create("Saved Parity Data")
+    } else {
+      WaterfallManager.createFormatted("Failed to save file: " + error, "error")
+    }
   }
 }
