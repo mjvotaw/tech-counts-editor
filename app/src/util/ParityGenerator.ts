@@ -883,16 +883,18 @@ clear(): clear parity highlights`)
     this.setNoteParity(rows, states)
     this.lastGraph = graph
     this.lastStates = states
-    // this.analyzeGraph(rows, graph)
   }
 
+  // Loads pre-calculated note parity data from json string
   loadParityData(jsonString: string) {
     const notedata = this.app.chartManager.loadedChart?.getNotedata()
     if (!notedata) return
     const rows = this.createRows(notedata)
-    this.lastStates = this.deserializePartyData(jsonString)
+    this.lastStates = this.deserializeParityData(jsonString)
     this.setNoteParity(rows, this.lastStates)
   }
+
+  // Generates a JSON string from the existing parity data
   serializeParityData(): string {
     if (this.lastStates) {
       const serializableStates: Array<SerializableState> = []
@@ -912,7 +914,7 @@ clear(): clear parity highlights`)
     }
   }
 
-  deserializePartyData(jsonString: string): State[] {
+  deserializeParityData(jsonString: string): State[] {
     const deserializedStates: Array<SerializableState> = JSON.parse(jsonString)
     const states: State[] = []
     for (const s of deserializedStates) {
@@ -944,22 +946,6 @@ clear(): clear parity highlights`)
       for (let j = 0; j < this.layout.length; j++) {
         if (rows[i].notes[j]) {
           rows[i].notes[j]!.parity = FEET_LABEL[FEET.indexOf(state.columns[j])]
-        }
-      }
-    }
-  }
-
-  // Analyzes the given graph to find the least costly path from the
-  // beginnning to the end of the stepchart.
-  // Sets the `parity` for the relevant notes of each row in rows.
-  analyzeGraph(rows: Row[], graph: StepParityGraph) {
-    const nodes_for_rows = this.computeCheapestPath(graph)
-    for (let i = 0; i < rows.length; i++) {
-      const node = graph.nodes[nodes_for_rows[i]]
-      for (let j = 0; j < this.layout.length; j++) {
-        if (rows[i].notes[j]) {
-          rows[i].notes[j]!.parity =
-            FEET_LABEL[FEET.indexOf(node.state.columns[j])]
         }
       }
     }
