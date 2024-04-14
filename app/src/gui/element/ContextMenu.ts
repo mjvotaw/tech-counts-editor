@@ -103,6 +103,10 @@ export class ContextMenuPopup {
               type: "selection",
               id: "parityRightToe",
             },
+            {
+              type: "selection",
+              id: "parityNone",
+            },
           ],
         }
         menu.appendChild(this.createElement(app, menuOption))

@@ -1095,7 +1095,14 @@ clear(): clear parity highlights`)
   }
 
   hasRowOverride(beat: number): boolean {
-    return this.rowOverrides[beat] != undefined
+    if (this.rowOverrides[beat] != undefined) {
+      for (const f of this.rowOverrides[beat]) {
+        if (f != Foot.NONE) {
+          return true
+        }
+      }
+    }
+    return false
   }
 
   getRowOverride(beat: number): Foot[] {
@@ -1129,10 +1136,11 @@ clear(): clear parity highlights`)
     return true
   }
 
-  removeRowOverride(beat: number, col: number) {
+  removeNoteOverride(beat: number, col: number): boolean {
     if (this.rowOverrides[beat] != undefined) {
-      this.rowOverrides[beat][col] = 0
+      this.rowOverrides[beat][col] = Foot.NONE
     }
+    return true
   }
 
   resetRowOverrides() {

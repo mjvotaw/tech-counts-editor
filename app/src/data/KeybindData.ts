@@ -1208,6 +1208,23 @@ export const KEYBIND_DATA: { [key: string]: Keybind } = {
       }
     },
   },
+  parityNone: {
+    label: "Reset",
+    bindLabel: "Parity None",
+    combos: [],
+    disabled: app =>
+      window.Parity?.getIsEnabled() == false ||
+      app.chartManager.selection.notes.length != 1,
+    callback: app => {
+      const notes = app.chartManager.getSelection()
+      if (notes.length != 1) {
+        return
+      }
+      if (window.Parity?.removeNoteOverride(notes[0].beat, notes[0].col)) {
+        window.Parity?.analyze()
+      }
+    },
+  },
   delete: {
     label: "Delete",
     combos: [
