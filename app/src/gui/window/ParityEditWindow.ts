@@ -2,19 +2,21 @@ import { App } from "../../App"
 import { NumberSpinner } from "../element/NumberSpinner"
 import { WaterfallManager } from "../element/WaterfallManager"
 import { Window } from "./Window"
-import { basename, dirname, extname } from "../../util/Path"
+import { basename, dirname } from "../../util/Path"
+import { EventHandler } from "../../util/EventHandler"
 import { FileHandler } from "../../util/file-handler/FileHandler"
 import { WebFileHandler } from "../../util/file-handler/WebFileHandler"
 
 export class ParityEditWindow extends Window {
   app: App
 
-  private currentWeights: { [key: string]: number }
-  private numberFields: { [key: string]: NumberSpinner } = {}
+  private innerContainer: HTMLDivElement
+  private parityDisplayLabels: HTMLDivElement[] = []
+  private parityOverrideSelects: HTMLSelectElement[] = []
 
   constructor(app: App) {
     super({
-      title: "Edit Parity Stuff",
+      title: "Edit Parity Data",
       width: 370,
       height: 400,
       disableClose: false,
@@ -24,75 +26,174 @@ export class ParityEditWindow extends Window {
 
     this.app = app
     window.Parity?.setEnabled(true)
-    this.currentWeights = window.Parity!.getWeights()
+    this.innerContainer = document.createElement("div")
 
     this.initView()
+    this.setupEventHandlers()
   }
 
   onClose() {
     window.Parity?.setEnabled(false)
+    this.windowElement.dispatchEvent(new Event("closingWindow"))
   }
+
+  // View building
 
   initView(): void {
     this.viewElement.replaceChildren()
-    this.viewElement.classList.add("timing-data")
-    const padding = document.createElement("div")
-    padding.classList.add("padding")
+    this.viewElement.classList.add("parity-data")
+    this.innerContainer.classList.add("padding")
 
-    // const item = Dropdown.create(
-    //   ["All charts", "This chart"],
-    //   this.chartTiming ? "This chart" : "All charts"
-    // )
-    // item.onChange(value => {
-    //   this.chartTiming = value == "This chart"
-    // })
+    this.addParityDisplay()
+    this.addFooterButtons()
 
-    //   padding.appendChild(item.view)
+    this.viewElement.appendChild(this.innerContainer)
+    this.resetParity()
+    this.updateParityDisplay()
+  }
 
-    const weightKeys = Object.keys(this.currentWeights)
-    weightKeys.forEach(title => {
-      const label = document.createElement("div")
-      label.classList.add("label")
-      label.innerText = title
+  addParityDisplay() {
+    const numCols = this.app.chartManager?.loadedChart?.gameType.numCols || 0
 
-      const item = NumberSpinner.create(this.currentWeights[title], 10, 0)
-      item.onChange = value => {
-        this.currentWeights[title] = value || this.currentWeights[title]
-        this.updateParity()
-      }
-      padding.appendChild(label)
-      padding.appendChild(item.view)
-      this.numberFields[title] = item
-    })
+    const container = document.createElement("div")
+
+    const displayContainer = document.createElement("div")
+    displayContainer.classList.add("parity-display")
+
+    const overridesContainer = document.createElement("div")
+    overridesContainer.classList.add("parity-display")
+
+    for (let i = 0; i < numCols; i++) {
+      // Create space for displaying current parity selections
+
+      const displayPanel = document.createElement("div")
+      displayPanel.classList.add("parity-display-panel")
+      displayPanel.innerText = "None"
+
+      displayContainer.appendChild(displayPanel)
+      this.parityDisplayLabels.push(displayPanel)
+
+      // Create selects
+      const panel = document.createElement("div")
+      panel.classList.add("parity-display-panel")
+
+      const selector = this.createParitySelector()
+      panel.appendChild(selector)
+
+      overridesContainer.appendChild(panel)
+      this.parityOverrideSelects.push(selector)
+    }
+
+    const displayLabel = document.createElement("div")
+    displayLabel.innerText = "Current Parity:"
+    container.appendChild(displayLabel)
+    container.appendChild(displayContainer)
+
+    const overrideLabel = document.createElement("div")
+    overrideLabel.innerText = "Overrides:"
+
+    container.appendChild(overrideLabel)
+    container.appendChild(overridesContainer)
+
+    this.innerContainer.appendChild(container)
+  }
+
+  createParitySelector(): HTMLSelectElement {
+    const selector = document.createElement("select")
+    selector.size = 5
+    const optionLabels = [
+      "None",
+      "Left Heel",
+      "Left Toe",
+      "Right Heel",
+      "Right Toe",
+    ]
+
+    for (let i = 0; i < optionLabels.length; i++) {
+      const option = document.createElement("option")
+      option.value = `${i}`
+      option.innerText = optionLabels[i]
+      selector.appendChild(option)
+    }
+    return selector
+  }
+
+  addFooterButtons() {
+    const footer = document.createElement("div")
+    footer.classList.add("footer")
 
     const resetButton = document.createElement("button")
-    resetButton.innerText = "Reset to Defaults"
+    resetButton.innerText = "Reset Overrides"
     resetButton.onclick = () => {
-      this.currentWeights = window.Parity!.getDefaultWeights()
-      this.updateFields()
-      this.updateParity()
+      window.Parity?.resetRowOverrides()
+      this.resetParity()
     }
-    padding.appendChild(resetButton)
+    footer.appendChild(resetButton)
 
     const saveButton = document.createElement("button")
-    saveButton.innerText = "Save"
+    saveButton.innerText = "Save Parity Data"
     saveButton.onclick = () => {
       this.saveParity()
     }
 
-    padding.appendChild(saveButton)
-
-    this.viewElement.appendChild(padding)
-    this.updateParity()
+    footer.appendChild(saveButton)
+    this.innerContainer.appendChild(footer)
   }
-  updateFields() {
-    for (const filename in this.numberFields) {
-      this.numberFields[filename].setValue(this.currentWeights[filename])
+
+  // Event handling
+
+  setupEventHandlers() {
+    const reloadParity = () => {
+      this.resetParity()
+    }
+
+    EventHandler.on("smLoaded", reloadParity)
+    EventHandler.on("chartLoaded", reloadParity)
+    EventHandler.on("chartModified", reloadParity)
+
+    const updateDisplay = () => {
+      this.updateParityDisplay()
+    }
+    EventHandler.on("snapToTickChanged", updateDisplay)
+
+    this.windowElement.addEventListener("closingWindow", function () {
+      EventHandler.off("smLoaded", reloadParity)
+      EventHandler.off("chartLoaded", reloadParity)
+      EventHandler.off("chartModified", reloadParity)
+      EventHandler.off("snapToTickChanged", updateDisplay)
+    })
+  }
+
+  updateParityDisplay() {
+    console.log("updateParityDisplay")
+    if (this.app.chartManager == undefined) {
+      return
+    }
+    const beat = this.app.chartManager?.getBeat()
+    const parity = window.Parity?.getParityForBeat(beat)
+
+    if (parity == undefined) {
+      console.log(`no parity info for beat ${beat}`)
+      // no notes on this beat, disable everything
+      for (const l of this.parityDisplayLabels) {
+        l.innerText = "None"
+      }
+    } else {
+      const optionLabels = [
+        "None",
+        "Left Heel",
+        "Left Toe",
+        "Right Heel",
+        "Right Toe",
+      ]
+      for (let i = 0; i < parity.length; i++) {
+        this.parityDisplayLabels[i].innerText = optionLabels[parity[i]]
+      }
     }
   }
 
-  updateParity() {
-    window.Parity?.updateWeights(this.currentWeights)
+  resetParity() {
+    window.Parity?.resetRowOverrides()
     window.Parity?.analyze()
   }
 

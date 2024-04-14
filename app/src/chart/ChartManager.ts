@@ -957,6 +957,7 @@ export class ChartManager {
 
   snapToNearestTick(beat: number) {
     this.setBeat(Math.max(0, this.getClosestTick(beat, 4 / Options.chart.snap)))
+    EventHandler.emit("snapToTickChanged")
   }
 
   snapToPreviousTick() {
@@ -987,6 +988,8 @@ export class ChartManager {
     }
 
     this.setBeat(Math.max(0, newBeat))
+
+    EventHandler.emit("snapToTickChanged")
   }
 
   snapToNextTick() {
@@ -1015,6 +1018,7 @@ export class ChartManager {
     }
 
     this.setBeat(newBeat)
+    EventHandler.emit("snapToTickChanged")
   }
 
   previousSnap() {

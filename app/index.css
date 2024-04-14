@@ -946,6 +946,34 @@ div.inlineEdit[contenteditable="true"]:focus {
   align-items: center;
 }
 
+.view.parity-data .main-content {
+  flex-grow: 1;
+}
+
+.view.parity-data .footer {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.view.parity-data .footer button {
+  flex-grow: 1;
+}
+
+.parity-display {
+  display: flex;
+  justify-content: space-between;
+}
+
+.parity-display-panel {
+  width: 24%;
+}
+
+.parity-display-panel select,
+.parity-display-panel option {
+  color: black;
+}
+
 input[type="text"],
 input[type="number"] {
   background: var(--bg-input);

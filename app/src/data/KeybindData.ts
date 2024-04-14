@@ -280,8 +280,8 @@ export const KEYBIND_DATA: { [key: string]: Keybind } = {
     callback: app => app.windowManager.openWindow(new TimingDataWindow(app)),
   },
   editParityStuff: {
-    label: "Edit Parity Stuff (experimental)",
-    combos: [],
+    label: "Edit Parity Data (experimental)",
+    combos: [{ key: "P", mods: [Modifier.SHIFT, Modifier.ALT] }],
     disabled: app => !app.chartManager.chartView || !Flags.openWindows,
     callback: app => {
       app.windowManager.openWindow(new ParityEditWindow(app))
