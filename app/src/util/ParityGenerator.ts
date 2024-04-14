@@ -2,6 +2,8 @@
 // Original algorithm by Jewel, polished by tillvit
 
 import { App } from "../App"
+import { EventHandler } from "./EventHandler"
+
 import {
   HoldNotedataEntry,
   Notedata,
@@ -34,7 +36,7 @@ interface Point {
   y: number
 }
 
-enum Foot {
+export enum Foot {
   NONE,
   LEFT_HEEL,
   LEFT_TOE,
@@ -138,7 +140,7 @@ export class ParityGenerator {
   private readonly layout
   private isEnabled: boolean = false
 
-  private rowOverrides: { [key: number]: Foot[] } = {}
+  private rowOverrides: { [key: string]: Foot[] } = {}
   private lastGraph?: StepParityGraph
   private lastStates?: State[]
 
@@ -892,6 +894,7 @@ clear(): clear parity highlights`)
     this.setNoteParity(rows, states)
     this.lastGraph = graph
     this.lastStates = states
+    EventHandler.emit("parityUpdated")
   }
 
   // Loads pre-calculated note parity data from json string
@@ -1134,8 +1137,9 @@ clear(): clear parity highlights`)
   }
 
   hasRowOverride(beat: number): boolean {
-    if (this.rowOverrides[beat] != undefined) {
-      for (const f of this.rowOverrides[beat]) {
+    const beatStr = beat.toFixed(3)
+    if (this.rowOverrides[beatStr] != undefined) {
+      for (const f of this.rowOverrides[beatStr]) {
         if (f != Foot.NONE) {
           return true
         }
@@ -1145,26 +1149,37 @@ clear(): clear parity highlights`)
   }
 
   getRowOverride(beat: number): Foot[] {
-    return this.rowOverrides[beat]
+    const beatStr = beat.toFixed(3)
+    if (this.rowOverrides[beatStr] != undefined) {
+      return this.rowOverrides[beatStr]
+    }
+    const empty: Array<Foot> = []
+    for (let i = 0; i < this.layout.length; i++) {
+      empty.push(Foot.NONE)
+    }
+    return empty
   }
 
   getNoteOverride(beat: number, col: number): Foot {
-    if (this.rowOverrides[beat] != undefined) {
-      return this.rowOverrides[beat][col]
+    const beatStr = beat.toFixed(3)
+    if (this.rowOverrides[beatStr] != undefined) {
+      return this.rowOverrides[beatStr][col]
     }
     return Foot.NONE
   }
 
   addNoteOverride(beat: number, col: number, foot: Foot): boolean {
-    if (this.rowOverrides[beat] == undefined) {
-      this.rowOverrides[beat] = new Array(this.layout.length).fill(Foot.NONE)
+    const beatStr = beat.toFixed(3)
+    if (this.rowOverrides[beatStr] == undefined) {
+      this.rowOverrides[beatStr] = new Array(this.layout.length).fill(Foot.NONE)
     }
 
-    this.rowOverrides[beat][col] = foot
+    this.rowOverrides[beatStr][col] = foot
     return true
   }
 
   addRowOverride(beat: number, feet: Foot[]): boolean {
+    const beatStr = beat.toFixed(3)
     const footCount: { [key: number]: number } = {}
     let totalCount = 0
     for (const foot of feet) {
@@ -1178,13 +1193,14 @@ clear(): clear parity highlights`)
       return false
     }
 
-    this.rowOverrides[beat] = feet
+    this.rowOverrides[beatStr] = feet
     return true
   }
 
   removeNoteOverride(beat: number, col: number): boolean {
-    if (this.rowOverrides[beat] != undefined) {
-      this.rowOverrides[beat][col] = Foot.NONE
+    const beatStr = beat.toFixed(3)
+    if (this.rowOverrides[beatStr] != undefined) {
+      this.rowOverrides[beatStr][col] = Foot.NONE
     }
     return true
   }
@@ -1198,11 +1214,11 @@ clear(): clear parity highlights`)
       return undefined
     }
     for (const state of this.lastStates) {
+      if (Math.abs(state.beat - beat) < 0.0001) {
+        return state.columns
+      }
       if (state.beat > beat) {
         break
-      }
-      if (state.beat == beat) {
-        return state.columns
       }
     }
     return undefined

@@ -973,6 +973,10 @@ div.inlineEdit[contenteditable="true"]:focus {
 .parity-display-panel option {
   color: black;
 }
+.parity-display-panel select:not(:disabled) option:checked {
+  color: white;
+  background-color: #0000fe;
+}
 
 input[type="text"],
 input[type="number"] {

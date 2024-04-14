@@ -6,6 +6,7 @@ import { basename, dirname } from "../../util/Path"
 import { EventHandler } from "../../util/EventHandler"
 import { FileHandler } from "../../util/file-handler/FileHandler"
 import { WebFileHandler } from "../../util/file-handler/WebFileHandler"
+import { Foot } from "../../util/ParityGenerator"
 
 export class ParityEditWindow extends Window {
   app: App
@@ -78,6 +79,12 @@ export class ParityEditWindow extends Window {
       panel.classList.add("parity-display-panel")
 
       const selector = this.createParitySelector()
+      selector.setAttribute("data-column", `${i}`)
+      selector.addEventListener(
+        "change",
+        this.handleParityOverrideChange.bind(this)
+      )
+
       panel.appendChild(selector)
 
       overridesContainer.appendChild(panel)
@@ -155,26 +162,33 @@ export class ParityEditWindow extends Window {
       this.updateParityDisplay()
     }
     EventHandler.on("snapToTickChanged", updateDisplay)
+    EventHandler.on("parityUpdated", updateDisplay)
 
     this.windowElement.addEventListener("closingWindow", function () {
       EventHandler.off("smLoaded", reloadParity)
       EventHandler.off("chartLoaded", reloadParity)
       EventHandler.off("chartModified", reloadParity)
       EventHandler.off("snapToTickChanged", updateDisplay)
+      EventHandler.off("parityUpdated", updateDisplay)
     })
   }
 
   updateParityDisplay() {
     console.log("updateParityDisplay")
-    if (this.app.chartManager == undefined) {
+    if (this.app.chartManager == undefined || window.Parity == undefined) {
       return
     }
     const beat = this.app.chartManager?.getBeat()
     const parity = window.Parity?.getParityForBeat(beat)
+    const overrides = window.Parity?.getRowOverride(beat)
 
     if (parity == undefined) {
-      console.log(`no parity info for beat ${beat}`)
       // no notes on this beat, disable everything
+      for (let i = 0; i < this.parityDisplayLabels.length; i++) {
+        this.parityDisplayLabels[i].innerText = "None"
+        this.parityOverrideSelects[i].value = "0"
+        this.parityOverrideSelects[i].disabled = true
+      }
       for (const l of this.parityDisplayLabels) {
         l.innerText = "None"
       }
@@ -188,7 +202,24 @@ export class ParityEditWindow extends Window {
       ]
       for (let i = 0; i < parity.length; i++) {
         this.parityDisplayLabels[i].innerText = optionLabels[parity[i]]
+        this.parityOverrideSelects[i].value = `${overrides[i]}`
+        this.parityOverrideSelects[i].disabled = parity[i] == Foot.NONE
       }
+    }
+  }
+
+  handleParityOverrideChange(e: Event) {
+    if (e.target instanceof HTMLSelectElement) {
+      const selector: HTMLSelectElement = e.target
+      const columnStr = selector.getAttribute("data-column")
+      if (columnStr == null) {
+        return
+      }
+      const column = parseInt(columnStr)
+      const parity = parseInt(selector.value)
+      const beat = this.app.chartManager?.getBeat()
+      window.Parity?.addNoteOverride(beat, column, parity)
+      window.Parity?.analyze()
     }
   }
 
