@@ -895,7 +895,7 @@ clear(): clear parity highlights`)
   }
 
   // Generates a JSON string from the existing parity data
-  serializeParityData(): string {
+  serializeParityData(indent: boolean = false): string {
     if (this.lastStates) {
       const serializableStates: Array<SerializableState> = []
 
@@ -908,7 +908,21 @@ clear(): clear parity highlights`)
           rowIndex: state.rowIndex,
         })
       }
-      return JSON.stringify(serializableStates)
+      return JSON.stringify(serializableStates, null, indent ? 2 : undefined)
+    } else {
+      return "[]"
+    }
+  }
+
+  // This just returns the `columns` for each row, indicating the position of
+  // each foot for a given row
+  serializeParityResults(indent: boolean = false): string {
+    if (this.lastStates) {
+      const parityRows: Array<Array<number>> = []
+      for (const state of this.lastStates) {
+        parityRows.push(state.columns)
+      }
+      return JSON.stringify(parityRows, null, indent ? 2 : undefined)
     } else {
       return "[]"
     }

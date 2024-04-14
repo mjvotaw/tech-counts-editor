@@ -100,15 +100,18 @@ export class ParityEditWindow extends Window {
     if (window.Parity == undefined) {
       return
     }
-    const parityJson = window.Parity.serializeParityData()
+    const parityJson = window.Parity.serializeParityResults(true)
     const smPath = this.app.chartManager.smPath
+    const difficulty =
+      this.app.chartManager.loadedChart?.difficulty || "No Difficulty"
+
     const dir = dirname(smPath)
     const baseName = basename(smPath)
     const fileName = baseName.includes(".")
       ? baseName.split(".").slice(0, -1).join(".")
       : baseName
 
-    const jsonFilename = fileName + "-parity.json"
+    const jsonFilename = `${fileName}-${difficulty}-parity.json`
     const jsonPath = dir + "/" + jsonFilename
 
     console.log(`saving parity data to  ${jsonPath}`)
