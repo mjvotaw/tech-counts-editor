@@ -135,10 +135,19 @@ export class ParityEditWindow extends Window {
       "Right Toe",
     ]
 
+    const optionClasses = [
+      "parity-None",
+      "parity-LeftHeel",
+      "parity-LeftToe",
+      "parity-RightHeel",
+      "parity-RightToe",
+    ]
+
     for (let i = 0; i < optionLabels.length; i++) {
       const option = document.createElement("option")
       option.value = `${i}`
       option.innerText = optionLabels[i]
+      option.classList.add(optionClasses[i])
       selector.appendChild(option)
     }
     return selector
@@ -243,10 +252,28 @@ export class ParityEditWindow extends Window {
     const parity = window.Parity?.getParityForBeat(beat)
     const overrides = window.Parity?.getRowOverride(beat)
 
+    const optionLabels = [
+      "None",
+      "Left Heel",
+      "Left Toe",
+      "Right Heel",
+      "Right Toe",
+    ]
+    const optionTextColors = [
+      "text-parity-None",
+      "text-parity-LeftHeel",
+      "text-parity-LeftToe",
+      "text-parity-RightHeel",
+      "text-parity-RightToe",
+    ]
+
     if (parity == undefined) {
       // no notes on this beat, disable everything
       for (let i = 0; i < this.parityDisplayLabels.length; i++) {
         this.parityDisplayLabels[i].innerText = "None"
+        this.parityDisplayLabels[i].classList.remove(...optionTextColors)
+        this.parityDisplayLabels[i].classList.add(optionTextColors[0])
+
         this.parityOverrideSelects[i].value = "0"
         this.parityOverrideSelects[i].disabled = true
       }
@@ -254,15 +281,11 @@ export class ParityEditWindow extends Window {
         l.innerText = "None"
       }
     } else {
-      const optionLabels = [
-        "None",
-        "Left Heel",
-        "Left Toe",
-        "Right Heel",
-        "Right Toe",
-      ]
       for (let i = 0; i < parity.length; i++) {
         this.parityDisplayLabels[i].innerText = optionLabels[parity[i]]
+        this.parityDisplayLabels[i].classList.remove(...optionTextColors)
+        this.parityDisplayLabels[i].classList.add(optionTextColors[parity[i]])
+
         this.parityOverrideSelects[i].value = `${overrides[i]}`
         this.parityOverrideSelects[i].disabled = parity[i] == Foot.NONE
       }

@@ -276,7 +276,10 @@ export class ChartManager {
           }
         }
         newbeat = Math.max(0, newbeat)
-        if (newbeat != this.beat) this.setBeat(newbeat)
+        if (newbeat != this.beat) {
+          this.setBeat(newbeat)
+          EventHandler.emit("snapToTickChanged")
+        }
         if (!this.holdEditing.every(x => x == undefined)) {
           for (let col = 0; col < this.holdEditing.length; col++) {
             if (
@@ -1090,6 +1093,7 @@ export class ChartManager {
     let index = bsearch(rows, this.beat)
     if (this.beat == rows[index]) index--
     this.setBeat(rows[Math.max(0, index)])
+    EventHandler.emit("snapToTickChanged")
   }
 
   /**
@@ -1103,6 +1107,7 @@ export class ChartManager {
     let index = bsearch(rows, this.beat)
     if (this.beat >= rows[index]) index++
     this.setBeat(rows[Math.min(rows.length - 1, index)])
+    EventHandler.emit("snapToTickChanged")
   }
 
   /**
@@ -1120,6 +1125,7 @@ export class ChartManager {
     const notedata = this.loadedChart.getNotedata()
     if (notedata.length == 0) return
     this.setBeat(notedata[0].beat)
+    EventHandler.emit("snapToTickChanged")
   }
 
   /**
@@ -1138,6 +1144,7 @@ export class ChartManager {
     if (notedata.length == 0) return
     const note = notedata[notedata.length - 1]
     this.setBeat(note.beat + (isHoldNote(note) ? note.hold : 0))
+    EventHandler.emit("snapToTickChanged")
   }
 
   private truncateHold(

@@ -973,9 +973,24 @@ div.inlineEdit[contenteditable="true"]:focus {
 .parity-display-panel option {
   color: black;
 }
-.parity-display-panel select:not(:disabled) option:checked {
+.parity-display-panel select:not(:disabled) option:checked.parity-LeftHeel {
   color: white;
-  background-color: #0000fe;
+  background-color: #0390fc;
+}
+
+.parity-display-panel select:not(:disabled) option:checked.parity-LeftToe {
+  color: white;
+  background-color: #abd6f7;
+}
+
+.parity-display-panel select:not(:disabled) option:checked.parity-RightHeel {
+  color: white;
+  background-color: #fcad03;
+}
+
+.parity-display-panel select:not(:disabled) option:checked.parity-RightToe {
+  color: white;
+  background-color: #fae5b9;
 }
 
 .receptor-display {
@@ -1021,6 +1036,41 @@ div.inlineEdit[contenteditable="true"]:focus {
   flex-direction: row-reverse;
   justify-content: flex-start;
   gap: 8px;
+}
+
+.bg-parity-LeftHeel {
+  background-color: #0390fc;
+}
+
+.bg-parity-LeftToe {
+  background-color: #abd6f7;
+}
+
+.bg-parity-RightHeel {
+  background-color: #fcad03;
+}
+
+.bg-parity-RightToe {
+  background-color: #fae5b9;
+}
+
+.text-parity-None {
+  color: var(--text-color-tertiary);
+}
+.text-parity-LeftHeel {
+  color: #0390fc;
+}
+
+.text-parity-LeftToe {
+  color: #abd6f7;
+}
+
+.text-parity-RightHeel {
+  color: #fcad03;
+}
+
+.text-parity-RightToe {
+  color: #fae5b9;
 }
 
 .hidden {

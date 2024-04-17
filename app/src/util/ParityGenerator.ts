@@ -765,6 +765,53 @@ clear(): clear parity highlights`)
     return this.permuteColumn(row, columns, column + 1)
   }
 
+  buildOverridenPermuteColumns(row: Row, permuteColumns: Foot[][]): Foot[][] {
+    if (this.hasRowOverride(row.beat)) {
+      const updatedPermuteColumns: Foot[][] = []
+      const overrides: Foot[] = this.getRowOverride(row.beat)
+      for (const pc of permuteColumns) {
+        const updatedPc: Foot[] = [...pc]
+
+        for (let c = 0; c < this.layout.length; c++) {
+          const noteOverride = overrides[c]
+          if (noteOverride != Foot.NONE) {
+            updatedPc[c] = noteOverride
+          }
+        }
+
+        // Check that this updated permuteColumn doesn't have something wacky like
+        // two left heels
+        if (
+          countOfItem(updatedPc, Foot.LEFT_HEEL) > 1 ||
+          countOfItem(updatedPc, Foot.LEFT_TOE) > 1 ||
+          countOfItem(updatedPc, Foot.RIGHT_HEEL) > 1 ||
+          countOfItem(updatedPc, Foot.RIGHT_TOE) > 1
+        ) {
+          continue
+        }
+        if (
+          updatedPermuteColumns.filter(u => arraysAreEqual(u, updatedPc))
+            .length > 0
+        ) {
+          continue
+        }
+        updatedPermuteColumns.push(updatedPc)
+      }
+
+      // Sanity check that we have at least one valid permutation
+      if (updatedPermuteColumns.length == 0) {
+        console.warn(
+          `Could not generate any valid permutations with parity overrides for row at beat ${row.beat}, clearing overrides, as there must be something invalid about it.`
+        )
+        this.removeRowOverride(row.beat)
+        return permuteColumns
+      } else {
+        return updatedPermuteColumns
+      }
+    }
+    return permuteColumns
+  }
+
   createRows(notedata: Notedata) {
     let activeHolds: (HoldNotedataEntry | undefined)[] = []
     let lastColumnSecond: number | null = null
@@ -988,26 +1035,10 @@ clear(): clear parity highlights`)
         const initialNode = graph.addOrGetExistingNode(state)
         let permuteColumns: Foot[][] = this.getPermuteColumns(rows[i])
         if (this.hasRowOverride(rows[i].beat)) {
-          for (let c = 0; c < this.layout.length; c++) {
-            const noteOverride = this.getNoteOverride(rows[i].beat, c)
-            if (noteOverride != Foot.NONE) {
-              // Create new copies of permuteColumns, because I'm pretty sure
-              // that updating them would accidentally update the cached stuff,
-              // and that would not be good
-              const updatedPermuteColumns: Foot[][] = []
-              for (const pc of permuteColumns) {
-                // If overriding this note would mean that Foot would be in this permutation
-                // twice, skip it.
-                if (pc[i] != noteOverride && pc.includes(noteOverride)) {
-                  continue
-                }
-                const updatedPC: Foot[] = [...pc]
-                updatedPC[c] = noteOverride
-                updatedPermuteColumns.push(updatedPC)
-              }
-              permuteColumns = updatedPermuteColumns
-            }
-          }
+          permuteColumns = this.buildOverridenPermuteColumns(
+            rows[i],
+            permuteColumns
+          )
         }
 
         for (const columns of permuteColumns) {
@@ -1167,7 +1198,14 @@ clear(): clear parity highlights`)
     if (this.rowOverrides[beatStr] == undefined) {
       this.rowOverrides[beatStr] = new Array(this.layout.length).fill(Foot.NONE)
     }
-
+    // Check that this row doesn't already contain an override for the given foot. If so, return false
+    if (
+      foot != Foot.NONE &&
+      this.rowOverrides[beatStr][col] != foot &&
+      this.rowOverrides[beatStr].includes(foot)
+    ) {
+      return false
+    }
     this.rowOverrides[beatStr][col] = foot
     return true
   }
@@ -1196,6 +1234,12 @@ clear(): clear parity highlights`)
     if (this.rowOverrides[beatStr] != undefined) {
       this.rowOverrides[beatStr][col] = Foot.NONE
     }
+    return true
+  }
+
+  removeRowOverride(beat: number): boolean {
+    const beatStr = beat.toFixed(3)
+    delete this.rowOverrides[beatStr]
     return true
   }
 
@@ -1374,4 +1418,8 @@ function setsAreEqual<T>(set1: Set<T>, set2: Set<T>): boolean {
     }
   }
   return true
+}
+
+function countOfItem<T>(array: T[], item: T): number {
+  return array.filter(a => a == item).length
 }
