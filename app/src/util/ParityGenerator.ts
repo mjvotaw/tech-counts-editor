@@ -986,12 +986,30 @@ clear(): clear parity highlights`)
       while (previousStates.length > 0) {
         const state = previousStates.shift()!
         const initialNode = graph.addOrGetExistingNode(state)
-        let permuteColumns: Foot[][] = []
+        let permuteColumns: Foot[][] = this.getPermuteColumns(rows[i])
         if (this.hasRowOverride(rows[i].beat)) {
-          permuteColumns.push(this.getRowOverride(rows[i].beat))
-        } else {
-          permuteColumns = this.getPermuteColumns(rows[i])
+          for (let c = 0; c < this.layout.length; c++) {
+            const noteOverride = this.getNoteOverride(rows[i].beat, c)
+            if (noteOverride != Foot.NONE) {
+              // Create new copies of permuteColumns, because I'm pretty sure
+              // that updating them would accidentally update the cached stuff,
+              // and that would not be good
+              const updatedPermuteColumns: Foot[][] = []
+              for (const pc of permuteColumns) {
+                // If overriding this note would mean that Foot would be in this permutation
+                // twice, skip it.
+                if (pc[i] != noteOverride && pc.includes(noteOverride)) {
+                  continue
+                }
+                const updatedPC: Foot[] = [...pc]
+                updatedPC[c] = noteOverride
+                updatedPermuteColumns.push(updatedPC)
+              }
+              permuteColumns = updatedPermuteColumns
+            }
+          }
         }
+
         for (const columns of permuteColumns) {
           const resultState: State = this.initResultState(
             state,
