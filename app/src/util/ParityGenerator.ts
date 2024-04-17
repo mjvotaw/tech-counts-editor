@@ -143,6 +143,7 @@ export class ParityGenerator {
   private rowOverrides: { [key: string]: Foot[] } = {}
   private lastGraph?: StepParityGraph
   private lastStates?: State[]
+  private lastParities: Foot[][] = []
 
   private DEFAULT_WEIGHTS: { [key: string]: number } = {
     DOUBLESTEP: 850,
@@ -891,47 +892,31 @@ clear(): clear parity highlights`)
 
     const graph = this.buildStateGraph(rows)
     const states = this.selectStatesForRows(graph, rows.length)
-    this.setNoteParity(rows, states)
+    const parities = states.map(s => s.columns)
+    this.setNoteParity(rows, parities)
     this.lastGraph = graph
     this.lastStates = states
+    this.lastParities = parities
     EventHandler.emit("parityUpdated")
   }
 
   // Loads pre-calculated note parity data from json string
-  loadParityData(jsonString: string) {
+  loadParityData(jsonString: string): boolean {
     const notedata = this.app.chartManager.loadedChart?.getNotedata()
-    if (!notedata) return
+    if (!notedata) return false
     const rows = this.createRows(notedata)
-    this.lastStates = this.deserializeParityData(jsonString)
-    this.setNoteParity(rows, this.lastStates)
-  }
-
-  // Generates a JSON string from the existing parity data
-  serializeParityData(indent: boolean = false): string {
-    if (this.lastStates) {
-      const serializableStates: Array<SerializableState> = []
-
-      for (const state of this.lastStates) {
-        serializableStates.push({
-          idx: state.idx,
-          columns: state.columns,
-          combinedColumns: state.combinedColumns,
-          movedFeet: [...state.movedFeet],
-          holdFeet: [...state.holdFeet],
-          second: state.second,
-          beat: state.beat,
-          rowIndex: state.rowIndex,
-        })
-      }
-      return JSON.stringify(serializableStates, null, indent ? 2 : undefined)
-    } else {
-      return "[]"
+    const parities = this.deserializeParityData(jsonString)
+    if (parities == undefined) {
+      return false
     }
+    this.lastParities = parities
+    this.setNoteParity(rows, this.lastParities)
+    return true
   }
 
   // This just returns the `columns` for each row, indicating the position of
   // each foot for a given row
-  serializeParityResults(indent: boolean = false): string {
+  serializeParityData(indent: boolean = false): string {
     if (this.lastStates) {
       const parityRows: Array<Array<number>> = []
       for (const state of this.lastStates) {
@@ -943,22 +928,13 @@ clear(): clear parity highlights`)
     }
   }
 
-  deserializeParityData(jsonString: string): State[] {
-    const deserializedStates: Array<SerializableState> = JSON.parse(jsonString)
-    const states: State[] = []
-    for (const s of deserializedStates) {
-      states.push({
-        idx: s.idx,
-        columns: s.columns,
-        combinedColumns: s.combinedColumns,
-        movedFeet: new Set(s.movedFeet),
-        holdFeet: new Set(s.holdFeet),
-        second: s.second,
-        beat: s.beat,
-        rowIndex: s.rowIndex,
-      })
+  deserializeParityData(jsonString: string): Foot[][] | undefined {
+    try {
+      const deserialized: Foot[][] = JSON.parse(jsonString)
+      return deserialized
+    } catch (e) {
+      return undefined
     }
-    return states
   }
 
   selectStatesForRows(graph: StepParityGraph, rowCount: number): State[] {
@@ -972,12 +948,12 @@ clear(): clear parity highlights`)
     return states
   }
 
-  setNoteParity(rows: Row[], states: State[]) {
+  setNoteParity(rows: Row[], parities: Foot[][]) {
     for (let i = 0; i < rows.length; i++) {
-      const state = states[i]
+      const parityForRow = parities[i]
       for (let j = 0; j < this.layout.length; j++) {
         if (rows[i].notes[j]) {
-          rows[i].notes[j]!.parity = FEET_LABEL[FEET.indexOf(state.columns[j])]
+          rows[i].notes[j]!.parity = FEET_LABEL[FEET.indexOf(parityForRow[j])]
         }
       }
     }

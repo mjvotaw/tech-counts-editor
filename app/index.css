@@ -978,6 +978,26 @@ div.inlineEdit[contenteditable="true"]:focus {
   background-color: #0000fe;
 }
 
+.import-parity-container {
+  padding-top: 24px;
+  display: block;
+}
+.import-parity-container textarea {
+  width: 100%;
+  color: black;
+}
+.import-parity-container .import-buttons {
+  display: flex;
+  margin-top: 12px;
+  flex-direction: row-reverse;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.hidden {
+  display: none;
+}
+
 input[type="text"],
 input[type="number"] {
   background: var(--bg-input);

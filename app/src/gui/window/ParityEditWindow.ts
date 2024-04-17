@@ -14,12 +14,20 @@ export class ParityEditWindow extends Window {
   private innerContainer: HTMLDivElement
   private parityDisplayLabels: HTMLDivElement[] = []
   private parityOverrideSelects: HTMLSelectElement[] = []
+  private parityImportContainer?: HTMLDivElement
+  private parityImportTextarea?: HTMLTextAreaElement
 
   constructor(app: App) {
+    const posLeft = Math.min(
+      window.innerWidth / 2 + 250,
+      window.innerWidth - 370
+    )
+
     super({
       title: "Edit Parity Data",
       width: 370,
       height: 400,
+      left: posLeft,
       disableClose: false,
       win_id: "parity_stuff",
       blocking: false,
@@ -46,6 +54,7 @@ export class ParityEditWindow extends Window {
     this.innerContainer.classList.add("padding")
 
     this.addParityDisplay()
+    this.addParityImport()
     this.addFooterButtons()
 
     this.viewElement.appendChild(this.innerContainer)
@@ -130,23 +139,65 @@ export class ParityEditWindow extends Window {
     footer.classList.add("footer")
 
     const resetButton = document.createElement("button")
-    resetButton.innerText = "Reset Overrides"
+    resetButton.innerText = "Reset All Overrides"
     resetButton.onclick = () => {
       window.Parity?.resetRowOverrides()
       this.resetParity()
     }
     footer.appendChild(resetButton)
 
+    const importButton = document.createElement("button")
+    importButton.innerText = "Import Parity Data"
+    importButton.onclick = () => {
+      this.openParityImport()
+    }
+    footer.appendChild(importButton)
+
     const saveButton = document.createElement("button")
-    saveButton.innerText = "Save Parity Data"
+    saveButton.innerText = "Export Parity Data"
     saveButton.onclick = () => {
       this.saveParity()
     }
-
     footer.appendChild(saveButton)
+
     this.innerContainer.appendChild(footer)
   }
 
+  addParityImport() {
+    const importContainer = document.createElement("div")
+    importContainer.classList.add("import-parity-container")
+    importContainer.classList.add("hidden")
+
+    const label = document.createElement("p")
+    label.innerText = "Import Parity Data"
+    importContainer.appendChild(label)
+
+    const importTextarea = document.createElement("textarea")
+    importTextarea.placeholder = "Paste parity JSON data here"
+    importContainer.appendChild(importTextarea)
+
+    const buttonContainer = document.createElement("div")
+    buttonContainer.classList.add("import-buttons")
+
+    const importButton = document.createElement("button")
+    importButton.innerText = "Import"
+    importButton.onclick = () => {
+      this.importParity()
+    }
+
+    const cancelButton = document.createElement("button")
+    cancelButton.innerText = "Close"
+    cancelButton.onclick = () => {
+      this.closeParityImport()
+    }
+
+    buttonContainer.appendChild(importButton)
+    buttonContainer.appendChild(cancelButton)
+    importContainer.appendChild(buttonContainer)
+    this.parityImportContainer = importContainer
+    this.parityImportTextarea = importTextarea
+    this.innerContainer.appendChild(importContainer)
+  }
   // Event handling
 
   setupEventHandlers() {
@@ -228,11 +279,36 @@ export class ParityEditWindow extends Window {
     window.Parity?.analyze()
   }
 
+  importParity() {
+    const jsonStr = this.parityImportTextarea?.value
+    if (jsonStr) {
+      if (window.Parity?.loadParityData(jsonStr)) {
+        WaterfallManager.create("Imported Parity Data")
+      } else {
+        WaterfallManager.createFormatted(
+          "Failed to import parity data. You probably messed up your JSON or something.",
+          "error"
+        )
+      }
+    }
+  }
+
+  openParityImport() {
+    this.parityImportContainer?.classList.remove("hidden")
+  }
+
+  closeParityImport() {
+    if (this.parityImportTextarea != undefined) {
+      this.parityImportTextarea.value = ""
+      this.parityImportContainer?.classList.add("hidden")
+    }
+  }
+
   async saveParity() {
     if (window.Parity == undefined) {
       return
     }
-    const parityJson = window.Parity.serializeParityResults(true)
+    const parityJson = window.Parity.serializeParityData(true)
     const smPath = this.app.chartManager.smPath
     const difficulty =
       this.app.chartManager.loadedChart?.difficulty || "No Difficulty"
@@ -263,7 +339,7 @@ export class ParityEditWindow extends Window {
     }
 
     if (error == null) {
-      WaterfallManager.create("Saved Parity Data")
+      WaterfallManager.create("Exported Parity Data")
     } else {
       WaterfallManager.createFormatted("Failed to save file: " + error, "error")
     }

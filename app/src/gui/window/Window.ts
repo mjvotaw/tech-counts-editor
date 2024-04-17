@@ -6,6 +6,8 @@ export interface WindowOptions {
   title: string
   width: number
   height: number
+  left?: number
+  top?: number
   win_id?: string
   disableClose?: boolean
   blocking?: boolean
@@ -26,11 +28,14 @@ export abstract class Window {
     const navbarElement = document.createElement("div")
     const navbarTitleElement = document.createElement("div")
 
+    const left = options.left ?? window.innerWidth / 2 - options.width / 2
+    const top = options.top ?? window.innerHeight / 2 - options.height / 2
+
     windowElement.appendChild(navbarElement)
     windowElement.appendChild(viewElement)
     windowElement.style.width = options.width + "px"
-    windowElement.style.left = window.innerWidth / 2 - options.width / 2 + "px"
-    windowElement.style.top = window.innerHeight / 2 - options.height / 2 + "px"
+    windowElement.style.left = left + "px"
+    windowElement.style.top = top + "px"
     windowElement.classList.add("unselectable", "window")
     if (options.win_id) windowElement.dataset.win_id = options.win_id
 
