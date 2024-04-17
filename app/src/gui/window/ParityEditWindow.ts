@@ -67,13 +67,21 @@ export class ParityEditWindow extends Window {
 
     const container = document.createElement("div")
 
+    const receptorContainer = document.createElement("div")
+    receptorContainer.classList.add("receptor-display")
+
     const displayContainer = document.createElement("div")
     displayContainer.classList.add("parity-display")
 
     const overridesContainer = document.createElement("div")
     overridesContainer.classList.add("parity-display")
 
+    const columnNames = ["left", "down", "up", "right"]
+
     for (let i = 0; i < numCols; i++) {
+      const receptorPanel = document.createElement("div")
+      receptorPanel.classList.add("receptor", columnNames[i])
+      receptorContainer.appendChild(receptorPanel)
       // Create space for displaying current parity selections
 
       const displayPanel = document.createElement("div")
@@ -99,6 +107,8 @@ export class ParityEditWindow extends Window {
       overridesContainer.appendChild(panel)
       this.parityOverrideSelects.push(selector)
     }
+
+    container.appendChild(receptorContainer)
 
     const displayLabel = document.createElement("div")
     displayLabel.innerText = "Current Parity:"

@@ -984,6 +984,7 @@ export class ChartManager {
       const closestMeasureTick =
         Math.round((newBeat - previousMeasureBeat) / snap) * snap
       this.setBeat(Math.max(0, previousMeasureBeat + closestMeasureTick))
+      EventHandler.emit("snapToTickChanged")
       return
     }
 
@@ -1014,6 +1015,7 @@ export class ChartManager {
 
     if (newBeat > nextMeasureBeat) {
       this.setBeat(nextMeasureBeat)
+      EventHandler.emit("snapToTickChanged")
       return
     }
 

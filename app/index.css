@@ -978,6 +978,35 @@ div.inlineEdit[contenteditable="true"]:focus {
   background-color: #0000fe;
 }
 
+.receptor-display {
+  display: flex;
+  justify-content: space-around;
+}
+.receptor {
+  background-image: url("./assets/noteskin/dance/default/receptor.png");
+  background-size: contain;
+  background-position: center center;
+  background-repeat: no-repeat;
+  width: 40px;
+  height: 40px;
+}
+
+.receptor.left {
+  transform: rotate(0deg);
+}
+
+.receptor.down {
+  transform: rotate(-90deg);
+}
+
+.receptor.up {
+  transform: rotate(90deg);
+}
+
+.receptor.right {
+  transform: rotate(180deg);
+}
+
 .import-parity-container {
   padding-top: 24px;
   display: block;
