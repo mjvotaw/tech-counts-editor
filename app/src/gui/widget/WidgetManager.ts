@@ -5,6 +5,7 @@ import { DebugWidget } from "./DebugWidget"
 import { NoteLayoutWidget } from "./NoteLayoutWidget"
 import { PlayInfoWidget } from "./PlayInfoWidget"
 import { StatusWidget } from "./StatusWidget"
+import { StageWidget } from "./StageWidget"
 import { Widget } from "./Widget"
 
 export class WidgetManager extends Container {
@@ -20,6 +21,7 @@ export class WidgetManager extends Container {
     this.addChild(new PlayInfoWidget(this))
     this.addChild(new StatusWidget(this))
     this.addChild(new DebugWidget(this))
+    this.addChild(new StageWidget(this))
     this.zIndex = 2
   }
 

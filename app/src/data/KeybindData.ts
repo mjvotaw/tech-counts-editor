@@ -1451,4 +1451,12 @@ export const KEYBIND_DATA: { [key: string]: Keybind } = {
       Options.chart.snap = 1 / 48
     },
   },
+  showHideStage: {
+    label: "Show/Hide Dance Stage",
+    combos: [],
+    disabled: app => !app.chartManager.chartView,
+    callback: () => {
+      Options.experimental.showDanceStage = !Options.experimental.showDanceStage
+    },
+  },
 }

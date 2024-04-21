@@ -3,6 +3,7 @@
 
 import { App } from "../App"
 import { EventHandler } from "./EventHandler"
+import { LAYOUT, StagePoint } from "./StageLayouts"
 
 import {
   HoldNotedataEntry,
@@ -10,31 +11,6 @@ import {
   NotedataEntry,
   isHoldNote,
 } from "../chart/sm/NoteTypes"
-
-const LAYOUT: Record<string, Point[]> = {
-  "dance-single": [
-    { x: -1, y: 0 },
-    { x: 0, y: -1 },
-    { x: 0, y: 1 },
-    { x: 1, y: 0 },
-  ],
-  "dance-double": [
-    { x: -1, y: 0 },
-    { x: -0.7, y: -1 },
-    { x: -0.7, y: 1 },
-    { x: -0.2, y: 0 },
-
-    { x: 0.2, y: 0 },
-    { x: 0.7, y: -1 },
-    { x: 0.7, y: 1 },
-    { x: 1, y: 0 },
-  ],
-}
-
-interface Point {
-  x: number
-  y: number
-}
 
 export enum Foot {
   NONE,
@@ -1268,7 +1244,7 @@ clear(): clear parity highlights`)
     return this.getDistanceSq(p1, p2) <= 2
   }
 
-  getDistanceSq(p1: Point, p2: Point) {
+  getDistanceSq(p1: StagePoint, p2: StagePoint) {
     return (p1.y - p2.y) * (p1.y - p2.y) + (p1.x - p2.x) * (p1.x - p2.x)
   }
 
@@ -1280,7 +1256,7 @@ clear(): clear parity highlights`)
     return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
   }
 
-  getPlayerAngle(left: Point, right: Point) {
+  getPlayerAngle(left: StagePoint, right: StagePoint) {
     const x1 = right.x - left.x
     const y1 = right.y - left.y
     const x2 = 1

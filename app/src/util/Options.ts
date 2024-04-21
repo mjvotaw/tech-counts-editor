@@ -125,7 +125,9 @@ export class DefaultOptions {
     showFPS: false,
     showTimers: false,
   }
-  static experimental = {}
+  static experimental = {
+    showDanceStage: false,
+  }
 }
 
 export type OptionsObject = {

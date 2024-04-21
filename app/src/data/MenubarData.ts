@@ -278,6 +278,10 @@ export const MENUBAR_DATA: { [key: string]: MenuMain } = {
         id: "doSpeedChanges",
         checked: () => Options.chart.doSpeedChanges,
       },
+      {
+        type: "selection",
+        id: "showHideStage",
+      },
     ],
   },
   chart: {

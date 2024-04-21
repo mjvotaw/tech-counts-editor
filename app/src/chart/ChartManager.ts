@@ -945,8 +945,13 @@ export class ChartManager {
   }
 
   playPause() {
-    if (this.chartAudio.isPlaying()) this.chartAudio.pause()
-    else this.chartAudio.play()
+    if (this.chartAudio.isPlaying()) {
+      this.chartAudio.pause()
+      EventHandler.emit("playbackStop")
+    } else {
+      this.chartAudio.play()
+      EventHandler.emit("playbackStart")
+    }
   }
 
   getClosestTick(beat: number, quant: number) {
