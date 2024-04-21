@@ -14,7 +14,7 @@ interface HighlightedNoteObject extends Container {
   object: NoteObject
 }
 
-const parityColors: Record<string, number> = {
+export const parityColors: Record<string, number> = {
   L: 0x0390fc,
   l: 0xabd6f7,
   R: 0xfcad03,
