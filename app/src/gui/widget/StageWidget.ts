@@ -1,10 +1,8 @@
 import {
-  BitmapText,
   Container,
   Graphics,
   IPointData,
   ObservablePoint,
-  Rectangle,
   Sprite,
   Texture,
 } from "pixi.js"
@@ -13,7 +11,7 @@ import { WidgetManager } from "./WidgetManager"
 import { EventHandler } from "../../util/EventHandler"
 import stageArrowUrl from "../../../assets/stage/StageArrow.png"
 import footUrl from "../../../assets/stage/LeftFoot.png"
-import { HoldNotedataEntry } from "../../chart/sm/NoteTypes"
+import { HoldNotedataEntry, NotedataEntry } from "../../chart/sm/NoteTypes"
 import { Options } from "../../util/Options"
 
 export class StageWidget extends Widget {
@@ -35,6 +33,32 @@ export class StageWidget extends Widget {
 
   private lastUpdateTime: number = 0
 
+  private LEFT_DEFAULT_POSITION: FootPositionAtTime = {
+    x: 100,
+    y: 150,
+    rotation: 0,
+    beat: 0,
+  }
+  private RIGHT_DEFAULT_POSITION: FootPositionAtTime = {
+    x: 200,
+    y: 150,
+    rotation: 0,
+    beat: 0,
+  }
+
+  private leftFootPosition: FootPositionAtTime = {
+    x: 100,
+    y: 150,
+    rotation: 0,
+    beat: 0,
+  }
+  private rightFootPosition: FootPositionAtTime = {
+    x: 200,
+    y: 150,
+    rotation: 0,
+    beat: 0,
+  }
+
   constructor(manager: WidgetManager) {
     super(manager)
     this.visible = false
@@ -52,7 +76,7 @@ export class StageWidget extends Widget {
   }
 
   update() {
-    let isVisible = true
+    let isVisible = false
     if (
       this.manager.chartManager.chartView &&
       Options.experimental.showDanceStage
@@ -93,6 +117,18 @@ export class StageWidget extends Widget {
 
       this.leftFoot.visible = showFeet
       this.rightFoot.visible = showFeet
+      if (showFeet) {
+        this.leftFoot.position.set(
+          this.leftFootPosition.x,
+          this.leftFootPosition.y
+        )
+        this.leftFoot.rotation = this.leftFootPosition.rotation
+        this.rightFoot.position.set(
+          this.rightFootPosition.x,
+          this.rightFootPosition.y
+        )
+        this.rightFoot.rotation = this.rightFootPosition.rotation
+      }
     }
     this.lastUpdateTime = currentTime
     this.lastBeatCrossed = currentBeat
@@ -106,13 +142,7 @@ export class StageWidget extends Widget {
     EventHandler.on("playbackStop", () => {
       this.stageLightsBeatsLeft = [0, 0, 0, 0]
     })
-    EventHandler.on("playbackStart", () => {
-      console.log(
-        `playbackStart: current beat: ${this.manager.chartManager.getBeat()}, last beat: ${
-          this.lastBeatCrossed
-        }, last index: ${this.lastNoteDataIndex}`
-      )
-    })
+    EventHandler.on("playbackStart", () => {})
   }
 
   private updateStage(currentBeat: number, showFeet: boolean) {
@@ -130,15 +160,11 @@ export class StageWidget extends Widget {
 
     // If the user scrolled backwards, reset lastNoteDataIndex to the note just before the current beat
     if (currentBeat < this.lastBeatCrossed) {
-      console.log(
-        `currentBeat ${currentBeat} < last beat: ${this.lastBeatCrossed}, previous index: ${this.lastNoteDataIndex}`
-      )
       this.lastNoteDataIndex = Math.max(
         0,
         notes.findIndex(n => n.beat >= currentBeat - 1) - 1
       )
       beatDelta = 0
-      console.log(`new index: ${this.lastNoteDataIndex}`)
     }
 
     // Update the amount of time left to display previous note flashes
@@ -149,11 +175,10 @@ export class StageWidget extends Widget {
       )
     }
 
-    // And if the current beat isn't past the last note, update any flashes that need to play
-    let leftHeel = -1
-    let leftToe = -1
-    let rightHeel = -1
-    let rightToe = -1
+    let leftHeel: NotedataEntry | undefined
+    let leftToe: NotedataEntry | undefined
+    let rightHeel: NotedataEntry | undefined
+    let rightToe: NotedataEntry | undefined
 
     if (currentBeat <= notes.at(-1)!.beat) {
       for (let index = this.lastNoteDataIndex; index < notes.length; index++) {
@@ -180,16 +205,16 @@ export class StageWidget extends Widget {
           if (showFeet && note.parity != undefined) {
             switch (note.parity) {
               case "L":
-                leftHeel = note.col
+                leftHeel = note
                 break
               case "l":
-                leftToe = note.col
+                leftToe = note
                 break
               case "R":
-                rightHeel = note.col
+                rightHeel = note
                 break
               case "r":
-                rightToe = note.col
+                rightToe = note
                 break
             }
           }
@@ -198,38 +223,49 @@ export class StageWidget extends Widget {
     }
 
     if (showFeet) {
-      const previousLeftPos = this.leftFoot.position
-      const previousRightPos = this.rightFoot.position
-      let newLeftPos: IPointData = this.leftFoot.position
-      let newRightPos: IPointData = this.rightFoot.position
+      const newLeftPos: FootPositionAtTime = { ...this.leftFootPosition }
+      const newRightPos: FootPositionAtTime = { ...this.rightFootPosition }
 
-      if (leftHeel > -1 && leftToe > -1) {
-        newLeftPos = this.midpoint(
-          this.arrowFlashes[leftHeel].position,
-          this.arrowFlashes[leftToe].position
+      if (leftHeel && leftToe) {
+        const leftPos = this.midpoint(
+          this.arrowFlashes[leftHeel.col].position,
+          this.arrowFlashes[leftToe.col].position
         )
-        this.leftFoot.rotation = this.getBracketAngle(
-          this.arrowFlashes[leftHeel].position,
-          this.arrowFlashes[leftToe].position
+        newLeftPos.x = leftPos.x
+        newLeftPos.y = leftPos.y
+        newLeftPos.beat = leftHeel.beat
+        newLeftPos.rotation = this.getBracketAngle(
+          this.arrowFlashes[leftHeel.col].position,
+          this.arrowFlashes[leftToe.col].position
         )
-      } else if (leftHeel > -1) {
-        newLeftPos = this.arrowFlashes[leftHeel].position
+      } else if (leftHeel) {
+        const leftPos = this.arrowFlashes[leftHeel.col].position
+        newLeftPos.x = leftPos.x
+        newLeftPos.y = leftPos.y
+        newLeftPos.beat = leftHeel.beat
       }
 
-      if (rightHeel > -1 && rightToe > -1) {
-        newRightPos = this.midpoint(
-          this.arrowFlashes[rightHeel].position,
-          this.arrowFlashes[rightToe].position
+      if (rightHeel && rightToe) {
+        const rightPos = this.midpoint(
+          this.arrowFlashes[rightHeel.col].position,
+          this.arrowFlashes[rightToe.col].position
         )
-        this.rightFoot.rotation = this.getBracketAngle(
-          this.arrowFlashes[rightHeel].position,
-          this.arrowFlashes[rightToe].position
+        newRightPos.x = rightPos.x
+        newRightPos.y = rightPos.y
+        newRightPos.beat = rightHeel.beat
+
+        newRightPos.rotation = this.getBracketAngle(
+          this.arrowFlashes[rightHeel.col].position,
+          this.arrowFlashes[rightToe.col].position
         )
-      } else if (rightHeel > -1) {
-        newRightPos = this.arrowFlashes[rightHeel].position
+      } else if (rightHeel) {
+        const rightPos = this.arrowFlashes[rightHeel.col].position
+        newRightPos.x = rightPos.x
+        newRightPos.y = rightPos.y
+        newRightPos.beat = rightHeel.beat
       }
 
-      if (leftHeel > -1 && leftToe == -1) {
+      if (leftHeel && !leftToe) {
         const angle = Math.max(
           this.MIN_ROTATION,
           Math.min(
@@ -237,10 +273,10 @@ export class StageWidget extends Widget {
             this.getFeetAngle(newLeftPos, newRightPos)
           )
         )
-        this.leftFoot.rotation = angle
+        newLeftPos.rotation = angle
       }
 
-      if (rightHeel > -1 && rightToe == -1) {
+      if (rightHeel && !rightToe) {
         const angle = Math.max(
           this.MIN_ROTATION,
           Math.min(
@@ -248,11 +284,11 @@ export class StageWidget extends Widget {
             this.getFeetAngle(newLeftPos, newRightPos)
           )
         )
-        this.rightFoot.rotation = angle
+        newRightPos.rotation = angle
       }
 
-      this.leftFoot.position.set(newLeftPos.x, newLeftPos.y)
-      this.rightFoot.position.set(newRightPos.x, newRightPos.y)
+      this.leftFootPosition = newLeftPos
+      this.rightFootPosition = newRightPos
     }
   }
 
@@ -262,6 +298,9 @@ export class StageWidget extends Widget {
     for (let i = 0; i < this.stageLightsBeatsLeft.length; i++) {
       this.stageLightsBeatsLeft[i] = 0
     }
+
+    this.leftFootPosition = { ...this.LEFT_DEFAULT_POSITION }
+    this.rightFootPosition = { ...this.RIGHT_DEFAULT_POSITION }
   }
 
   private buildDanceStage() {
@@ -371,14 +410,34 @@ export class StageWidget extends Widget {
 
     const dy = Math.abs(bottom.y - top.y)
     const dx = bottom.x - top.x
-    console.log(`dx: ${dx}, dy: ${dy}`)
     return Math.atan2(dy, dx) - Math.PI * 0.5
   }
 
-  private getFeetAngle(left: IPointData, right: IPointData): number {
+  private getFeetAngle(
+    left: FootPositionAtTime,
+    right: FootPositionAtTime
+  ): number {
     const dy = right.y - left.y
     const dx = right.x - left.x
 
+    // Right foot is on left side of stage, and on the same "row"
+    // we need to make sure it's pointing in a sane direction
+    if (dy == 0 && dx < 0) {
+      // whichever foot was on the pad first gets the priority, as it's
+      // probably pointing in the right direction
+      if (left.beat < right.beat) {
+        return left.rotation
+      } else {
+        return right.rotation
+      }
+    }
     return Math.atan2(dy, dx)
   }
+}
+
+interface FootPositionAtTime {
+  x: number
+  y: number
+  rotation: number
+  beat: number
 }
