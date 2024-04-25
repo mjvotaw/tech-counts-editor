@@ -68,6 +68,7 @@ export class StageWidget extends Widget {
     this.stage.height = 300
     this.stage.x = 0
     this.stage.y = 0
+    this.scale.set(0.5)
 
     this.addChild(this.stage)
     this.buildDanceStage()
@@ -85,8 +86,8 @@ export class StageWidget extends Widget {
     }
     this.visible = isVisible
 
-    this.x = (this.manager.app.renderer.screen.width / 2) * -1 + 100
-    this.y = (this.manager.app.renderer.screen.height / 2) * -1 + 100
+    this.x = (this.manager.app.renderer.screen.width / 2) * -1 + 200
+    this.y = (this.manager.app.renderer.screen.height / 2) * -1 + 200
     if (!isVisible) {
       return
     }

@@ -11,6 +11,7 @@ import { Notefield } from "./Notefield"
 interface HighlightedNoteObject extends Container {
   selection: Sprite
   parity: Sprite
+  parityOverride: Sprite
   object: NoteObject
 }
 
@@ -83,12 +84,21 @@ export class NoteContainer extends Container {
         parity.width = objectBounds.width
         parity.height = objectBounds.height
         parity.alpha = 0
+
+        const parityOverride = new Sprite(Texture.WHITE)
+        parityOverride.x = objectBounds.x
+        parityOverride.y = objectBounds.y + objectBounds.height - 5
+        parityOverride.width = objectBounds.width
+        parityOverride.height = 5
+        parityOverride.alpha = 0
+
         this.notefield.renderer.registerDragNote(container, note)
         container.object = object
         container.selection = selection
         container.parity = parity
+        container.parityOverride = parityOverride
         this.arrowMap.set(note, container)
-        container.addChild(object, selection, parity)
+        container.addChild(object, selection, parity, parityOverride)
         this.addChild(container)
       }
     }
@@ -164,6 +174,8 @@ export class NoteContainer extends Container {
       container.parity.alpha = note.parity ? 0.4 : 0
       container.parity.tint =
         note.parity !== undefined ? parityColors[note.parity] : 0xffffff
+      container.parityOverride.alpha = note.parityOverride ? 0.4 : 0
+      container.parityOverride.tint = note.parityOverride ? 0xff0000 : 0xffffff
     }
   }
 

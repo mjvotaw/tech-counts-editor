@@ -993,6 +993,21 @@ div.inlineEdit[contenteditable="true"]:focus {
   background-color: #fae5b9;
 }
 
+.parity-weights-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.parity-weight {
+  display: flex;
+  flex-direction: row;
+}
+
+.parity-weight * {
+  flex: 1;
+}
+
 .receptor-display {
   display: flex;
   justify-content: space-around;

@@ -39,6 +39,7 @@ interface ExtraNotedata {
     hasHit: boolean
   }
   parity?: string
+  parityOverride?: boolean
 }
 
 export type TapNotedataEntry = PartialTapNotedataEntry & ExtraNotedata

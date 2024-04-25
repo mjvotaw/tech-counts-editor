@@ -16,6 +16,11 @@ export class ParityEditWindow extends Window {
   private parityOverrideSelects: HTMLSelectElement[] = []
   private parityImportContainer?: HTMLDivElement
   private parityImportTextarea?: HTMLTextAreaElement
+  private parityDisplayContainer?: HTMLDivElement
+  private parityWeightsContainer?: HTMLDivElement
+
+  private currentWeights: { [key: string]: number }
+  private numberFields: { [key: string]: NumberSpinner } = {}
 
   constructor(app: App) {
     const posLeft = Math.min(
@@ -26,7 +31,7 @@ export class ParityEditWindow extends Window {
     super({
       title: "Edit Parity Data",
       width: 370,
-      height: 400,
+      height: 420,
       left: posLeft,
       disableClose: false,
       win_id: "parity_stuff",
@@ -35,6 +40,7 @@ export class ParityEditWindow extends Window {
 
     this.app = app
     window.Parity?.setEnabled(true)
+    this.currentWeights = window.Parity!.getWeights()
     this.innerContainer = document.createElement("div")
 
     this.initView()
@@ -54,6 +60,7 @@ export class ParityEditWindow extends Window {
     this.innerContainer.classList.add("padding")
 
     this.addParityDisplay()
+    this.addWeightEditor()
     this.addParityImport()
     this.addFooterButtons()
 
@@ -66,6 +73,7 @@ export class ParityEditWindow extends Window {
     const numCols = this.app.chartManager?.loadedChart?.gameType.numCols || 0
 
     const container = document.createElement("div")
+    container.classList.add("parity-display-container")
 
     const receptorContainer = document.createElement("div")
     receptorContainer.classList.add("receptor-display")
@@ -122,6 +130,7 @@ export class ParityEditWindow extends Window {
     container.appendChild(overridesContainer)
 
     this.innerContainer.appendChild(container)
+    this.parityDisplayContainer = container
   }
 
   createParitySelector(): HTMLSelectElement {
@@ -156,6 +165,14 @@ export class ParityEditWindow extends Window {
   addFooterButtons() {
     const footer = document.createElement("div")
     footer.classList.add("footer")
+
+    const showHideWeights = document.createElement("button")
+    showHideWeights.innerText = "Show/Hide Weights"
+    showHideWeights.onclick = () => {
+      this.parityWeightsContainer?.classList.toggle("hidden")
+      this.parityDisplayContainer?.classList.toggle("hidden")
+    }
+    footer.appendChild(showHideWeights)
 
     const resetButton = document.createElement("button")
     resetButton.innerText = "Reset All Overrides"
@@ -216,6 +233,32 @@ export class ParityEditWindow extends Window {
     this.parityImportContainer = importContainer
     this.parityImportTextarea = importTextarea
     this.innerContainer.appendChild(importContainer)
+  }
+
+  addWeightEditor() {
+    const weightContainer = document.createElement("div")
+    weightContainer.classList.add("parity-weights-container", "hidden")
+
+    const weightKeys = Object.keys(this.currentWeights)
+    weightKeys.forEach(title => {
+      const weightLine = document.createElement("div")
+      weightLine.classList.add("parity-weight")
+      const label = document.createElement("div")
+      label.classList.add("label")
+      label.innerText = title
+
+      const item = NumberSpinner.create(this.currentWeights[title], 10, 0)
+      item.onChange = value => {
+        this.currentWeights[title] = value || this.currentWeights[title]
+        this.updateParityWeights()
+      }
+      weightLine.appendChild(label)
+      weightLine.appendChild(item.view)
+      weightContainer.appendChild(weightLine)
+      this.numberFields[title] = item
+    })
+    this.parityWeightsContainer = weightContainer
+    this.innerContainer.appendChild(weightContainer)
   }
   // Event handling
 
@@ -309,6 +352,11 @@ export class ParityEditWindow extends Window {
 
   resetParity() {
     window.Parity?.resetRowOverrides()
+    window.Parity?.analyze()
+  }
+
+  updateParityWeights() {
+    window.Parity?.updateWeights(this.currentWeights)
     window.Parity?.analyze()
   }
 

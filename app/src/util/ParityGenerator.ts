@@ -977,6 +977,7 @@ clear(): clear parity highlights`)
       for (let j = 0; j < this.layout.length; j++) {
         if (rows[i].notes[j]) {
           rows[i].notes[j]!.parity = FEET_LABEL[FEET.indexOf(parityForRow[j])]
+          rows[i].notes[j]!.parityOverride = this.hasRowOverride(rows[i].beat)
         }
       }
     }
