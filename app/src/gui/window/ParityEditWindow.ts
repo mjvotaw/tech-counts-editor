@@ -177,7 +177,7 @@ export class ParityEditWindow extends Window {
     const resetButton = document.createElement("button")
     resetButton.innerText = "Reset All Overrides"
     resetButton.onclick = () => {
-      window.Parity?.resetRowOverrides()
+      window.Parity?.resetBeatOverrides()
       this.resetParity()
     }
     footer.appendChild(resetButton)
@@ -190,9 +190,9 @@ export class ParityEditWindow extends Window {
     footer.appendChild(importButton)
 
     const saveButton = document.createElement("button")
-    saveButton.innerText = "Export Parity Data"
+    saveButton.innerText = "Save Parity Report"
     saveButton.onclick = () => {
-      this.saveParity()
+      this.saveParityReport()
     }
     footer.appendChild(saveButton)
 
@@ -351,7 +351,7 @@ export class ParityEditWindow extends Window {
   }
 
   resetParity() {
-    window.Parity?.resetRowOverrides()
+    window.Parity?.resetBeatOverrides()
     window.Parity?.analyze()
   }
 
@@ -395,10 +395,7 @@ export class ParityEditWindow extends Window {
       this.app.chartManager.loadedChart?.difficulty || "No Difficulty"
 
     const dir = dirname(smPath)
-    const baseName = basename(smPath)
-    const fileName = baseName.includes(".")
-      ? baseName.split(".").slice(0, -1).join(".")
-      : baseName
+    const fileName = basename(dir)
 
     const jsonFilename = `${fileName}-${difficulty}-parity.json`
     const jsonPath = dir + "/" + jsonFilename
@@ -421,6 +418,44 @@ export class ParityEditWindow extends Window {
 
     if (error == null) {
       WaterfallManager.create("Exported Parity Data")
+    } else {
+      WaterfallManager.createFormatted("Failed to save file: " + error, "error")
+    }
+  }
+
+  async saveParityReport() {
+    if (window.Parity == undefined) {
+      return
+    }
+    const parityJson = window.Parity.generateParityReport()
+    const smPath = this.app.chartManager.smPath
+    const difficulty =
+      this.app.chartManager.loadedChart?.difficulty || "No Difficulty"
+
+    const dir = dirname(smPath)
+    const fileName = basename(dir)
+
+    const jsonFilename = `${fileName}-${difficulty}-parity-report.json`
+    const jsonPath = dir + "/" + jsonFilename
+
+    console.log(`saving parity data to  ${jsonPath}`)
+
+    let error: string | null = null
+    if (await FileHandler.getFileHandle(jsonPath, { create: true })) {
+      await FileHandler.writeFile(jsonPath, parityJson).catch(err => {
+        const message = err.message
+        error = message
+      })
+
+      const blob = new Blob([parityJson], { type: "application/json" })
+      ;(FileHandler.getStandardHandler() as WebFileHandler).saveBlob(
+        blob,
+        jsonFilename
+      )
+    }
+
+    if (error == null) {
+      WaterfallManager.create("Saved Parity Report")
     } else {
       WaterfallManager.createFormatted("Failed to save file: " + error, "error")
     }
