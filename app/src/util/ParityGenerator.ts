@@ -935,101 +935,6 @@ clear(): clear parity highlights`)
     return parities
   }
 
-  // Loads pre-calculated note parity data from json string
-  loadParityData(jsonString: string): boolean {
-    const notedata = this.app.chartManager.loadedChart?.getNotedata()
-    if (!notedata) return false
-    const rows = this.createRows(notedata)
-    const parities = this.deserializeParityData(jsonString)
-    if (parities == undefined) {
-      return false
-    }
-    const paritiesWithoutOverrides = this.generateParities(false)
-
-    // This is mostly a sanity check
-    if (
-      parities.length != rows.length ||
-      parities.length != paritiesWithoutOverrides.length
-    ) {
-      return false
-    }
-
-    // Now that we've loaded the json data, we need to figure out if it represents any
-    // notes that were overridden.
-    const rowDifferences = this.getParityDifferences(
-      paritiesWithoutOverrides,
-      parities
-    )
-    // And then map those differences to beat instead of row
-
-    const beatDifferences: { [key: string]: Foot[] } = {}
-    for (const rowIndex in rowDifferences) {
-      const beatStr = rows[rowIndex].beat.toFixed(3)
-      beatDifferences[beatStr] = rowDifferences[rowIndex]
-    }
-    this.lastParities = parities
-    this.beatOverrides = beatDifferences
-    this.setNoteParity(rows, this.lastParities)
-    return true
-  }
-
-  // Returns rows that differ between p1 and p2
-  // For a given row, the values of p2 that differ from p1 are returned
-  // For examples, given p1 = [[0010], [3100]], p2 = [[0010], [2100]]
-  // returns {1: [2000]}
-  getParityDifferences(p1: Foot[][], p2: Foot[][]): { [key: number]: Foot[] } {
-    const rowDifferences: { [key: number]: Foot[] } = {}
-
-    for (let r = 0; r < p1.length; r++) {
-      const diffs: Foot[] = []
-      let hasDifference: boolean = false
-      for (let c = 0; c < p1[r].length; c++) {
-        if (p1[r][c] != p2[r][c]) {
-          diffs.push(p2[r][c])
-          hasDifference = true
-        } else {
-          diffs.push(Foot.NONE)
-        }
-      }
-      if (hasDifference) {
-        rowDifferences[r] = diffs
-      }
-    }
-    return rowDifferences
-  }
-
-  // This just returns the `columns` for each row, indicating the position of
-  // each foot for a given row
-  serializeParityData(indent: boolean = false): string {
-    return JSON.stringify(this.lastParities, null, indent ? 2 : undefined)
-  }
-
-  deserializeParityData(jsonString: string): Foot[][] | undefined {
-    try {
-      const deserialized: Foot[][] = JSON.parse(jsonString)
-      return deserialized
-    } catch (e) {
-      return undefined
-    }
-  }
-
-  generateParityReport(): string {
-    const parityWithoutOverrides = this.generateParities(false)
-    const parityWithOverrides = this.generateParities(true)
-
-    const overrides = this.getParityDifferences(
-      parityWithoutOverrides,
-      parityWithOverrides
-    )
-
-    const report = {
-      parityWithoutOverrides,
-      parityWithOverrides,
-      overrides,
-    }
-    return JSON.stringify(report)
-  }
-
   selectStatesForRows(graph: StepParityGraph, rowCount: number): State[] {
     const nodes_for_rows = this.computeCheapestPath(graph)
     const states: State[] = []
@@ -1309,6 +1214,101 @@ clear(): clear parity highlights`)
       }
     }
     return undefined
+  }
+
+  // Loads pre-calculated note parity data from json string
+  loadParityData(jsonString: string): boolean {
+    const notedata = this.app.chartManager.loadedChart?.getNotedata()
+    if (!notedata) return false
+    const rows = this.createRows(notedata)
+    const parities = this.deserializeParityData(jsonString)
+    if (parities == undefined) {
+      return false
+    }
+    const paritiesWithoutOverrides = this.generateParities(false)
+
+    // This is mostly a sanity check
+    if (
+      parities.length != rows.length ||
+      parities.length != paritiesWithoutOverrides.length
+    ) {
+      return false
+    }
+
+    // Now that we've loaded the json data, we need to figure out if it represents any
+    // notes that were overridden.
+    const rowDifferences = this.getParityDifferences(
+      paritiesWithoutOverrides,
+      parities
+    )
+    // And then map those differences to beat instead of row
+
+    const beatDifferences: { [key: string]: Foot[] } = {}
+    for (const rowIndex in rowDifferences) {
+      const beatStr = rows[rowIndex].beat.toFixed(3)
+      beatDifferences[beatStr] = rowDifferences[rowIndex]
+    }
+    this.lastParities = parities
+    this.beatOverrides = beatDifferences
+    this.setNoteParity(rows, this.lastParities)
+    return true
+  }
+
+  // Returns rows that differ between p1 and p2
+  // For a given row, the values of p2 that differ from p1 are returned
+  // For examples, given p1 = [[0010], [3100]], p2 = [[0010], [2100]]
+  // returns {1: [2000]}
+  getParityDifferences(p1: Foot[][], p2: Foot[][]): { [key: number]: Foot[] } {
+    const rowDifferences: { [key: number]: Foot[] } = {}
+
+    for (let r = 0; r < p1.length; r++) {
+      const diffs: Foot[] = []
+      let hasDifference: boolean = false
+      for (let c = 0; c < p1[r].length; c++) {
+        if (p1[r][c] != p2[r][c]) {
+          diffs.push(p2[r][c])
+          hasDifference = true
+        } else {
+          diffs.push(Foot.NONE)
+        }
+      }
+      if (hasDifference) {
+        rowDifferences[r] = diffs
+      }
+    }
+    return rowDifferences
+  }
+
+  // This just returns the `columns` for each row, indicating the position of
+  // each foot for a given row
+  serializeParityData(indent: boolean = false): string {
+    return JSON.stringify(this.lastParities, null, indent ? 2 : undefined)
+  }
+
+  deserializeParityData(jsonString: string): Foot[][] | undefined {
+    try {
+      const deserialized: Foot[][] = JSON.parse(jsonString)
+      return deserialized
+    } catch (e) {
+      return undefined
+    }
+  }
+
+  generateParityReport(): string {
+    const parityWithoutOverrides = this.generateParities(false)
+    const parityWithOverrides = this.generateParities(true)
+
+    const overrides = this.getParityDifferences(
+      parityWithoutOverrides,
+      parityWithOverrides
+    )
+
+    const report = {
+      parityWithoutOverrides,
+      parityWithOverrides,
+      overrides,
+    }
+    return JSON.stringify(report)
   }
 
   bracketCheck(column1: number, column2: number) {
