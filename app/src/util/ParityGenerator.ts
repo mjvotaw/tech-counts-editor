@@ -150,6 +150,45 @@ class StepParityGraph {
     from.neighbors.set(to.id, cost)
     to.ancestors.set(from.id, cost)
   }
+
+  computeCheapestPath(): number[] {
+    const start = this.startNode
+    const end = this.endNode
+    return this.getCheapestPathBetweenNodes(start, end)
+  }
+
+  getCheapestPathBetweenNodes(start: number, end: number): number[] {
+    const shortest_path: number[] = []
+    const cost = Array(this.nodes.length).fill(Number.MAX_VALUE)
+    const predecessor = Array(this.nodes.length).fill(-1)
+
+    cost[start] = 0
+    for (let i = 0; i <= end; i++) {
+      const node = this.nodes[i]!
+      for (const [neighborNodeIdx, weight] of node.neighbors) {
+        if (cost[i] + weight.TOTAL < cost[neighborNodeIdx]) {
+          cost[neighborNodeIdx] = cost[i] + weight.TOTAL
+          predecessor[neighborNodeIdx] = i
+        }
+      }
+    }
+
+    let current_node = end
+    while (current_node != start) {
+      if (current_node == -1) {
+        console.warn(
+          `getCheapestPathBetweenNodes:: current_node == -1, while searching for path between ${start} and ${end}`
+        )
+        break
+      }
+      if (current_node != end) {
+        shortest_path.push(current_node)
+      }
+      current_node = predecessor[current_node]
+    }
+    shortest_path.reverse()
+    return shortest_path
+  }
 }
 
 export class ParityGenerator {
@@ -169,7 +208,7 @@ export class ParityGenerator {
     JACK: 30,
     JUMP: 30,
     BRACKETTAP: 400,
-    HOLDSWITCH: 20,
+    HOLDSWITCH: 55,
     MINE: 10000,
     FOOTSWITCH: 5000,
     MISSED_FOOTSWITCH: 500,
@@ -186,7 +225,7 @@ export class ParityGenerator {
     JACK: 30,
     JUMP: 30,
     BRACKETTAP: 400,
-    HOLDSWITCH: 20,
+    HOLDSWITCH: 55,
     MINE: 10000,
     FOOTSWITCH: 5000,
     MISSED_FOOTSWITCH: 500,
@@ -1111,7 +1150,7 @@ clear(): clear parity highlights`)
   }
 
   selectStatesForRows(graph: StepParityGraph, rowCount: number): State[] {
-    const nodes_for_rows = this.computeCheapestPath(graph)
+    const nodes_for_rows = graph.computeCheapestPath()
     const states: State[] = []
     for (let i = 0; i < rowCount; i++) {
       const node = graph.nodes[nodes_for_rows[i]]
@@ -1249,35 +1288,6 @@ clear(): clear parity highlights`)
     }
 
     return resultState
-  }
-
-  computeCheapestPath(graph: StepParityGraph): number[] {
-    const start = graph.startNode
-    const end = graph.endNode
-    const shortest_path: number[] = []
-    const cost = Array(graph.nodes.length).fill(Number.MAX_VALUE)
-    const predecessor = Array(graph.nodes.length).fill(-1)
-
-    cost[start] = 0
-    for (let i = 0; i <= end; i++) {
-      const node = graph.nodes[i]!
-      for (const [neighborNodeIdx, weight] of node.neighbors) {
-        if (cost[i] + weight.TOTAL < cost[neighborNodeIdx]) {
-          cost[neighborNodeIdx] = cost[i] + weight.TOTAL
-          predecessor[neighborNodeIdx] = i
-        }
-      }
-    }
-
-    let current_node = end
-    while (current_node != start) {
-      if (current_node != end) {
-        shortest_path.push(current_node)
-      }
-      current_node = predecessor[current_node]
-    }
-    shortest_path.reverse()
-    return shortest_path
   }
 
   setEnabled(enabled: boolean) {
