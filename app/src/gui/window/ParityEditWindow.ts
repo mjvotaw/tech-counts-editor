@@ -50,6 +50,11 @@ export class ParityEditWindow extends Window {
   onClose() {
     window.Parity?.setEnabled(false)
     this.windowElement.dispatchEvent(new Event("closingWindow"))
+    EventHandler.off("smLoaded", this.resetParity.bind(this))
+    EventHandler.off("chartLoaded", this.resetParity.bind(this))
+    EventHandler.off("chartModified", this.resetParity.bind(this))
+    EventHandler.off("snapToTickChanged", this.updateParityDisplay.bind(this))
+    EventHandler.off("parityUpdated", this.updateParityDisplay.bind(this))
   }
 
   // View building
@@ -190,9 +195,9 @@ export class ParityEditWindow extends Window {
     footer.appendChild(importButton)
 
     const saveButton = document.createElement("button")
-    saveButton.innerText = "Save Parity Report"
+    saveButton.innerText = "Save Step Graph"
     saveButton.onclick = () => {
-      this.saveParityReport()
+      this.saveStephGraph()
     }
     footer.appendChild(saveButton)
 
@@ -267,15 +272,15 @@ export class ParityEditWindow extends Window {
       this.resetParity()
     }
 
-    EventHandler.on("smLoaded", reloadParity)
-    EventHandler.on("chartLoaded", reloadParity)
-    EventHandler.on("chartModified", reloadParity)
+    EventHandler.on("smLoaded", this.resetParity.bind(this))
+    EventHandler.on("chartLoaded", this.resetParity.bind(this))
+    EventHandler.on("chartModified", this.resetParity.bind(this))
 
     const updateDisplay = () => {
       this.updateParityDisplay()
     }
-    EventHandler.on("snapToTickChanged", updateDisplay)
-    EventHandler.on("parityUpdated", updateDisplay)
+    EventHandler.on("snapToTickChanged", this.updateParityDisplay.bind(this))
+    EventHandler.on("parityUpdated", this.updateParityDisplay.bind(this))
 
     this.windowElement.addEventListener("closingWindow", function () {
       EventHandler.off("smLoaded", reloadParity)
@@ -294,7 +299,8 @@ export class ParityEditWindow extends Window {
     const beat = this.app.chartManager?.getBeat()
     const parity = window.Parity?.getParityForBeat(beat)
     const overrides = window.Parity?.getRowOverride(beat)
-
+    const node = window.Parity?.getNodeForBeat(beat)
+    console.log(node)
     const optionLabels = [
       "None",
       "Left Heel",
@@ -390,32 +396,7 @@ export class ParityEditWindow extends Window {
       return
     }
     const parityJson = window.Parity.serializeParityData(true)
-    const smPath = this.app.chartManager.smPath
-    const difficulty =
-      this.app.chartManager.loadedChart?.difficulty || "No Difficulty"
-
-    const dir = dirname(smPath)
-    const fileName = basename(dir)
-
-    const jsonFilename = `${fileName}-${difficulty}-parity.json`
-    const jsonPath = dir + "/" + jsonFilename
-
-    console.log(`saving parity data to  ${jsonPath}`)
-
-    let error: string | null = null
-    if (await FileHandler.getFileHandle(jsonPath, { create: true })) {
-      await FileHandler.writeFile(jsonPath, parityJson).catch(err => {
-        const message = err.message
-        error = message
-      })
-
-      const blob = new Blob([parityJson], { type: "application/json" })
-      ;(FileHandler.getStandardHandler() as WebFileHandler).saveBlob(
-        blob,
-        jsonFilename
-      )
-    }
-
+    const error = await this.saveJsonData(parityJson, "parity")
     if (error == null) {
       WaterfallManager.create("Exported Parity Data")
     } else {
@@ -428,6 +409,30 @@ export class ParityEditWindow extends Window {
       return
     }
     const parityJson = window.Parity.generateParityReport()
+    const error = await this.saveJsonData(parityJson, "parity-report")
+
+    if (error == null) {
+      WaterfallManager.create("Saved Parity Report")
+    } else {
+      WaterfallManager.createFormatted("Failed to save file: " + error, "error")
+    }
+  }
+
+  async saveStephGraph() {
+    if (window.Parity == undefined) {
+      return
+    }
+    const parityJson = window.Parity.serializeStepGraph()
+    const error = await this.saveJsonData(parityJson, "step-graph")
+
+    if (error == null) {
+      WaterfallManager.create("Saved Step Graph")
+    } else {
+      WaterfallManager.createFormatted("Failed to save file: " + error, "error")
+    }
+  }
+
+  async saveJsonData(data: string, fileSuffix: string): Promise<string | null> {
     const smPath = this.app.chartManager.smPath
     const difficulty =
       this.app.chartManager.loadedChart?.difficulty || "No Difficulty"
@@ -435,29 +440,25 @@ export class ParityEditWindow extends Window {
     const dir = dirname(smPath)
     const fileName = basename(dir)
 
-    const jsonFilename = `${fileName}-${difficulty}-parity-report.json`
+    const jsonFilename = `${fileName}-${difficulty}-${fileSuffix}.json`
     const jsonPath = dir + "/" + jsonFilename
 
-    console.log(`saving parity data to  ${jsonPath}`)
+    console.log(`saving data to  ${jsonPath}`)
 
     let error: string | null = null
     if (await FileHandler.getFileHandle(jsonPath, { create: true })) {
-      await FileHandler.writeFile(jsonPath, parityJson).catch(err => {
+      await FileHandler.writeFile(jsonPath, data).catch(err => {
         const message = err.message
         error = message
       })
 
-      const blob = new Blob([parityJson], { type: "application/json" })
+      const blob = new Blob([data], { type: "application/json" })
       ;(FileHandler.getStandardHandler() as WebFileHandler).saveBlob(
         blob,
         jsonFilename
       )
     }
 
-    if (error == null) {
-      WaterfallManager.create("Saved Parity Report")
-    } else {
-      WaterfallManager.createFormatted("Failed to save file: " + error, "error")
-    }
+    return error
   }
 }
