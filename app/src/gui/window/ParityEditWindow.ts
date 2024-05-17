@@ -298,7 +298,7 @@ export class ParityEditWindow extends Window {
     }
     const beat = this.app.chartManager?.getBeat()
     const parity = window.Parity?.getParityForBeat(beat)
-    const overrides = window.Parity?.getRowOverride(beat)
+    const overrides = window.Parity?.getBeatOverride(beat)
     const node = window.Parity?.getNodeForBeat(beat)
     console.log(node)
     const optionLabels = [
@@ -399,20 +399,6 @@ export class ParityEditWindow extends Window {
     const error = await this.saveJsonData(parityJson, "parity")
     if (error == null) {
       WaterfallManager.create("Exported Parity Data")
-    } else {
-      WaterfallManager.createFormatted("Failed to save file: " + error, "error")
-    }
-  }
-
-  async saveParityReport() {
-    if (window.Parity == undefined) {
-      return
-    }
-    const parityJson = window.Parity.generateParityReport()
-    const error = await this.saveJsonData(parityJson, "parity-report")
-
-    if (error == null) {
-      WaterfallManager.create("Saved Parity Report")
     } else {
       WaterfallManager.createFormatted("Failed to save file: " + error, "error")
     }
