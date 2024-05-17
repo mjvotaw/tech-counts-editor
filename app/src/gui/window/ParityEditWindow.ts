@@ -6,7 +6,7 @@ import { basename, dirname } from "../../util/Path"
 import { EventHandler } from "../../util/EventHandler"
 import { FileHandler } from "../../util/file-handler/FileHandler"
 import { WebFileHandler } from "../../util/file-handler/WebFileHandler"
-import { Foot } from "../../util/ParityGenerator"
+import { Foot } from "../../util/ParityDataTypes"
 
 export class ParityEditWindow extends Window {
   app: App
@@ -195,9 +195,9 @@ export class ParityEditWindow extends Window {
     footer.appendChild(importButton)
 
     const saveButton = document.createElement("button")
-    saveButton.innerText = "Save Step Graph"
+    saveButton.innerText = "Save Parity Data"
     saveButton.onclick = () => {
-      this.saveStephGraph()
+      this.saveParity()
     }
     footer.appendChild(saveButton)
 
