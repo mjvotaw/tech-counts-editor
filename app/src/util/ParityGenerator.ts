@@ -12,6 +12,7 @@ import {
   SerializableState,
   StepParityNode,
   Row,
+  BeatOverrides,
 } from "./ParityDataTypes"
 import { ParityGenInternal, FEET, FEET_LABEL } from "./ParityGenInternals"
 
@@ -21,7 +22,7 @@ export class ParityGenerator {
   private parityGenInternal: ParityGenInternal
   private isEnabled: boolean = false
 
-  private beatOverrides: { [key: string]: Foot[] } = {}
+  private beatOverrides: BeatOverrides
   private lastGraph?: StepParityGraph
   private lastStates?: State[]
   private lastParities: Foot[][] = []
@@ -63,6 +64,7 @@ export class ParityGenerator {
   constructor(app: App, type: string) {
     this.app = app
     this.layout = LAYOUT[type]
+    this.beatOverrides = new BeatOverrides(this.layout.columnCount)
     this.parityGenInternal = new ParityGenInternal(type)
   }
 
@@ -108,91 +110,35 @@ clear(): clear parity highlights`)
   //
 
   hasBeatOverride(beat: number): boolean {
-    const beatStr = beat.toFixed(3)
-    if (this.beatOverrides[beatStr] != undefined) {
-      for (const f of this.beatOverrides[beatStr]) {
-        if (f != Foot.NONE) {
-          return true
-        }
-      }
-    }
-    return false
+    return this.beatOverrides.hasBeatOverride(beat)
   }
 
   getBeatOverride(beat: number): Foot[] {
-    const beatStr = beat.toFixed(3)
-    if (this.beatOverrides[beatStr] != undefined) {
-      return this.beatOverrides[beatStr]
-    }
-    const empty: Array<Foot> = []
-    for (let i = 0; i < this.layout.columnCount; i++) {
-      empty.push(Foot.NONE)
-    }
-    return empty
+    return this.beatOverrides.getBeatOverride(beat)
   }
 
   getNoteOverride(beat: number, col: number): Foot {
-    const beatStr = beat.toFixed(3)
-    if (this.beatOverrides[beatStr] != undefined) {
-      return this.beatOverrides[beatStr][col]
-    }
-    return Foot.NONE
+    return this.beatOverrides.getNoteOverride(beat, col)
   }
 
   addNoteOverride(beat: number, col: number, foot: Foot): boolean {
-    const beatStr = beat.toFixed(3)
-    if (this.beatOverrides[beatStr] == undefined) {
-      this.beatOverrides[beatStr] = new Array(this.layout.columnCount).fill(
-        Foot.NONE
-      )
-    }
-    // Check that this row doesn't already contain an override for the given foot. If so, return false
-    if (
-      foot != Foot.NONE &&
-      this.beatOverrides[beatStr][col] != foot &&
-      this.beatOverrides[beatStr].includes(foot)
-    ) {
-      return false
-    }
-    this.beatOverrides[beatStr][col] = foot
-    return true
+    return this.beatOverrides.addNoteOverride(beat, col, foot)
   }
 
   addRowOverride(beat: number, feet: Foot[]): boolean {
-    const beatStr = beat.toFixed(3)
-    const footCount: { [key: number]: number } = {}
-    let totalCount = 0
-    for (const foot of feet) {
-      footCount[foot] = (footCount[foot] || 0) + 1
-      totalCount += 1
-      if (foot != Foot.NONE && footCount[foot] > 1) {
-        return false
-      }
-    }
-    if (totalCount == 0) {
-      return false
-    }
-
-    this.beatOverrides[beatStr] = feet
-    return true
+    return this.beatOverrides.addRowOverride(beat, feet)
   }
 
   removeNoteOverride(beat: number, col: number): boolean {
-    const beatStr = beat.toFixed(3)
-    if (this.beatOverrides[beatStr] != undefined) {
-      this.beatOverrides[beatStr][col] = Foot.NONE
-    }
-    return true
+    return this.beatOverrides.removeNoteOverride(beat, col)
   }
 
   removeBeatOverride(beat: number): boolean {
-    const beatStr = beat.toFixed(3)
-    delete this.beatOverrides[beatStr]
-    return true
+    return this.beatOverrides.removeBeatOverride(beat)
   }
 
   resetBeatOverrides() {
-    this.beatOverrides = {}
+    this.beatOverrides = new BeatOverrides(this.layout.columnCount)
   }
 
   //
@@ -274,8 +220,8 @@ clear(): clear parity highlights`)
       return false
     }
     const paritiesWithoutOverrides = this.parityGenInternal.generateParities(
-      false,
-      notedata
+      notedata,
+      undefined
     )
 
     // This is mostly a sanity check
@@ -300,21 +246,13 @@ clear(): clear parity highlights`)
       beatDifferences[beatStr] = rowDifferences[rowIndex]
     }
     this.lastParities = parities
-    this.beatOverrides = beatDifferences
-    this.setNoteParity(rows, this.lastParities)
+    this.beatOverrides.setBeatOverrides(beatDifferences)
+    this.parityGenInternal.setNoteParity(
+      rows,
+      this.lastParities,
+      this.beatOverrides
+    )
     return true
-  }
-
-  setNoteParity(rows: Row[], parities: Foot[][]) {
-    for (let i = 0; i < rows.length; i++) {
-      const parityForRow = parities[i]
-      for (let j = 0; j < this.layout.columnCount; j++) {
-        if (rows[i].notes[j]) {
-          rows[i].notes[j]!.parity = FEET_LABEL[FEET.indexOf(parityForRow[j])]
-          rows[i].notes[j]!.parityOverride = this.hasBeatOverride(rows[i].beat)
-        }
-      }
-    }
   }
 
   // Returns rows that differ between p1 and p2

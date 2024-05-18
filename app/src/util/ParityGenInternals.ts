@@ -19,10 +19,10 @@ import {
 import {
   Foot,
   State,
-  SerializableState,
   Row,
   StepParityNode,
   StepParityGraph,
+  BeatOverrides,
 } from "./ParityDataTypes"
 import { ParityCostCalculator } from "./ParityCost"
 
@@ -40,8 +40,6 @@ export class ParityGenInternal {
   private permuteCache: Map<number, Foot[][]> = new Map()
   private readonly layout
 
-  private beatOverrides: { [key: string]: Foot[] } = {}
-
   constructor(type: string) {
     this.layout = LAYOUT[type]
     this.costCalculator = new ParityCostCalculator(type)
@@ -49,18 +47,17 @@ export class ParityGenInternal {
 
   analyze(
     notedata: Notedata,
-    beatOverrides: { [key: string]: Foot[] },
+    beatOverrides: BeatOverrides | undefined,
     weights: { [key: string]: number }
   ): { graph: StepParityGraph; selectedStates: State[]; parities: Foot[][] } {
-    this.beatOverrides = beatOverrides
     this.costCalculator.setWeights(weights)
 
     const rows = this.createRows(notedata)
 
-    const graph = this.buildStateGraph(rows, true)
+    const graph = this.buildStateGraph(rows, beatOverrides)
     const selectedStates = this.selectStatesForRows(graph, rows.length)
     const parities = selectedStates.map(s => s.columns)
-    this.setNoteParity(rows, parities)
+    this.setNoteParity(rows, parities, beatOverrides)
     return { graph, selectedStates, parities }
   }
 
@@ -128,10 +125,14 @@ export class ParityGenInternal {
     return this.permuteColumn(row, columns, column + 1)
   }
 
-  buildOverridenPermuteColumns(row: Row, permuteColumns: Foot[][]): Foot[][] {
-    if (this.hasBeatOverride(row.beat)) {
+  buildOverridenPermuteColumns(
+    row: Row,
+    permuteColumns: Foot[][],
+    beatOverrides: BeatOverrides
+  ): Foot[][] {
+    if (beatOverrides.hasBeatOverride(row.beat)) {
       const updatedPermuteColumns: Foot[][] = []
-      const overrides: Foot[] = this.getBeatOverride(row.beat)
+      const overrides: Foot[] = beatOverrides.getBeatOverride(row.beat)
       for (const pc of permuteColumns) {
         const updatedPc: Foot[] = [...pc]
 
@@ -166,7 +167,7 @@ export class ParityGenInternal {
         console.warn(
           `Could not generate any valid permutations with parity overrides for row at beat ${row.beat}, clearing overrides, as there must be something invalid about it.`
         )
-        this.removeBeatOverride(row.beat)
+        beatOverrides.removeBeatOverride(row.beat)
         return permuteColumns
       } else {
         return updatedPermuteColumns
@@ -276,13 +277,16 @@ export class ParityGenInternal {
     return rows
   }
 
-  generateParities(use_overrides: boolean, notedata: Notedata): Foot[][] {
+  generateParities(
+    notedata: Notedata,
+    beatOverrides: BeatOverrides | undefined
+  ): Foot[][] {
     const rows = this.createRows(notedata)
 
-    const graph = this.buildStateGraph(rows, use_overrides)
+    const graph = this.buildStateGraph(rows, beatOverrides)
     const states = this.selectStatesForRows(graph, rows.length)
     const parities = states.map(s => s.columns)
-    this.setNoteParity(rows, parities)
+    this.setNoteParity(rows, parities, beatOverrides)
     return parities
   }
 
@@ -297,13 +301,18 @@ export class ParityGenInternal {
     return states
   }
 
-  setNoteParity(rows: Row[], parities: Foot[][]) {
+  setNoteParity(
+    rows: Row[],
+    parities: Foot[][],
+    beatOverrides: BeatOverrides | undefined
+  ) {
     for (let i = 0; i < rows.length; i++) {
       const parityForRow = parities[i]
       for (let j = 0; j < this.layout.columnCount; j++) {
         if (rows[i].notes[j]) {
           rows[i].notes[j]!.parity = FEET_LABEL[FEET.indexOf(parityForRow[j])]
-          rows[i].notes[j]!.parityOverride = this.hasBeatOverride(rows[i].beat)
+          rows[i].notes[j]!.parityOverride =
+            beatOverrides && beatOverrides.hasBeatOverride(rows[i].beat)
         }
       }
     }
@@ -312,7 +321,10 @@ export class ParityGenInternal {
   // Generates a StepParityGraph from the given array of Rows.
   // The graph inserts two additional nodes: one that represent the beginning of the song, before the first note,
   // and one that represents the end of the song, after the final note.
-  buildStateGraph(rows: Row[], use_overrides: boolean): StepParityGraph {
+  buildStateGraph(
+    rows: Row[],
+    beatOverrides: BeatOverrides | undefined
+  ): StepParityGraph {
     const graph: StepParityGraph = new StepParityGraph()
     const beginningState: State = new State(-1, rows[0].second - 1, -1, [])
 
@@ -328,10 +340,11 @@ export class ParityGenInternal {
         const state = previousStates.shift()!
         const initialNode = graph.addOrGetExistingNode(state)
         let permuteColumns: Foot[][] = this.getPermuteColumns(rows[i])
-        if (use_overrides && this.hasBeatOverride(rows[i].beat)) {
+        if (beatOverrides && beatOverrides.hasBeatOverride(rows[i].beat)) {
           permuteColumns = this.buildOverridenPermuteColumns(
             rows[i],
-            permuteColumns
+            permuteColumns,
+            beatOverrides
           )
         }
 
@@ -414,98 +427,6 @@ export class ParityGenInternal {
     }
 
     return resultState
-  }
-
-  //
-  // Methods for checking/setting overrides
-  //
-
-  hasBeatOverride(beat: number): boolean {
-    const beatStr = beat.toFixed(3)
-    if (this.beatOverrides[beatStr] != undefined) {
-      for (const f of this.beatOverrides[beatStr]) {
-        if (f != Foot.NONE) {
-          return true
-        }
-      }
-    }
-    return false
-  }
-
-  getBeatOverride(beat: number): Foot[] {
-    const beatStr = beat.toFixed(3)
-    if (this.beatOverrides[beatStr] != undefined) {
-      return this.beatOverrides[beatStr]
-    }
-    const empty: Array<Foot> = []
-    for (let i = 0; i < this.layout.columnCount; i++) {
-      empty.push(Foot.NONE)
-    }
-    return empty
-  }
-
-  getNoteOverride(beat: number, col: number): Foot {
-    const beatStr = beat.toFixed(3)
-    if (this.beatOverrides[beatStr] != undefined) {
-      return this.beatOverrides[beatStr][col]
-    }
-    return Foot.NONE
-  }
-
-  addNoteOverride(beat: number, col: number, foot: Foot): boolean {
-    const beatStr = beat.toFixed(3)
-    if (this.beatOverrides[beatStr] == undefined) {
-      this.beatOverrides[beatStr] = new Array(this.layout.columnCount).fill(
-        Foot.NONE
-      )
-    }
-    // Check that this row doesn't already contain an override for the given foot. If so, return false
-    if (
-      foot != Foot.NONE &&
-      this.beatOverrides[beatStr][col] != foot &&
-      this.beatOverrides[beatStr].includes(foot)
-    ) {
-      return false
-    }
-    this.beatOverrides[beatStr][col] = foot
-    return true
-  }
-
-  addRowOverride(beat: number, feet: Foot[]): boolean {
-    const beatStr = beat.toFixed(3)
-    const footCount: { [key: number]: number } = {}
-    let totalCount = 0
-    for (const foot of feet) {
-      footCount[foot] = (footCount[foot] || 0) + 1
-      totalCount += 1
-      if (foot != Foot.NONE && footCount[foot] > 1) {
-        return false
-      }
-    }
-    if (totalCount == 0) {
-      return false
-    }
-
-    this.beatOverrides[beatStr] = feet
-    return true
-  }
-
-  removeNoteOverride(beat: number, col: number): boolean {
-    const beatStr = beat.toFixed(3)
-    if (this.beatOverrides[beatStr] != undefined) {
-      this.beatOverrides[beatStr][col] = Foot.NONE
-    }
-    return true
-  }
-
-  removeBeatOverride(beat: number): boolean {
-    const beatStr = beat.toFixed(3)
-    delete this.beatOverrides[beatStr]
-    return true
-  }
-
-  resetBeatOverrides() {
-    this.beatOverrides = {}
   }
 
   // Returns rows that differ between p1 and p2

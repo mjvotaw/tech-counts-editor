@@ -213,6 +213,108 @@ export class StepParityGraph {
   }
 }
 
+// Holds onto all the data for letting us override the parity for notes.
+//
+// beatOverrides is a dictionary, where the key is the song's beat truncated to 3 decimal places,
+// and the value is a Foot[] array. Any value other than Foot.NONE indicates an override.
+export class BeatOverrides {
+  beatOverrides: { [key: string]: Foot[] } = {}
+  columnCount: number
+
+  constructor(columnCount: number) {
+    this.columnCount = columnCount
+  }
+
+  hasBeatOverride(beat: number): boolean {
+    const beatStr = beat.toFixed(3)
+    if (this.beatOverrides[beatStr] != undefined) {
+      for (const f of this.beatOverrides[beatStr]) {
+        if (f != Foot.NONE) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  getBeatOverride(beat: number): Foot[] {
+    const beatStr = beat.toFixed(3)
+    if (this.beatOverrides[beatStr] != undefined) {
+      return this.beatOverrides[beatStr]
+    }
+    const empty: Array<Foot> = []
+    for (let i = 0; i < this.columnCount; i++) {
+      empty.push(Foot.NONE)
+    }
+    return empty
+  }
+
+  getNoteOverride(beat: number, col: number): Foot {
+    const beatStr = beat.toFixed(3)
+    if (this.beatOverrides[beatStr] != undefined) {
+      return this.beatOverrides[beatStr][col]
+    }
+    return Foot.NONE
+  }
+
+  addNoteOverride(beat: number, col: number, foot: Foot): boolean {
+    const beatStr = beat.toFixed(3)
+    if (this.beatOverrides[beatStr] == undefined) {
+      this.beatOverrides[beatStr] = new Array(this.columnCount).fill(Foot.NONE)
+    }
+    // Check that this row doesn't already contain an override for the given foot. If so, return false
+    if (
+      foot != Foot.NONE &&
+      this.beatOverrides[beatStr][col] != foot &&
+      this.beatOverrides[beatStr].includes(foot)
+    ) {
+      return false
+    }
+    this.beatOverrides[beatStr][col] = foot
+    return true
+  }
+
+  addRowOverride(beat: number, feet: Foot[]): boolean {
+    const beatStr = beat.toFixed(3)
+    const footCount: { [key: number]: number } = {}
+    let totalCount = 0
+    for (const foot of feet) {
+      footCount[foot] = (footCount[foot] || 0) + 1
+      totalCount += 1
+      if (foot != Foot.NONE && footCount[foot] > 1) {
+        return false
+      }
+    }
+    if (totalCount == 0) {
+      return false
+    }
+
+    this.beatOverrides[beatStr] = feet
+    return true
+  }
+
+  removeNoteOverride(beat: number, col: number): boolean {
+    const beatStr = beat.toFixed(3)
+    if (this.beatOverrides[beatStr] != undefined) {
+      this.beatOverrides[beatStr][col] = Foot.NONE
+    }
+    return true
+  }
+
+  removeBeatOverride(beat: number): boolean {
+    const beatStr = beat.toFixed(3)
+    delete this.beatOverrides[beatStr]
+    return true
+  }
+
+  setBeatOverrides(newBeatOverrides: { [key: string]: Foot[] }) {
+    this.beatOverrides = newBeatOverrides
+  }
+  resetBeatOverrides() {
+    this.beatOverrides = {}
+  }
+}
+
 // helper functions
 
 function compareStates(state1: State, state2: State): boolean {
@@ -262,5 +364,3 @@ function setsAreEqual<T>(set1: Set<T>, set2: Set<T>): boolean {
   }
   return true
 }
-
-// Math functions
