@@ -20,10 +20,10 @@ export class ParityGenerator {
   private parityGenInternal: ParityGenInternal
   private isEnabled: boolean = false
 
-  private beatOverrides: BeatOverrides
-  private lastGraph?: StepParityGraph
-  private lastStates?: State[]
-  private lastParities: Foot[][] = []
+  beatOverrides: BeatOverrides
+  lastGraph?: StepParityGraph
+  lastStates?: State[]
+  lastParities: Foot[][] = []
 
   private DEFAULT_WEIGHTS: { [key: string]: number } = {
     DOUBLESTEP: 850,
@@ -40,6 +40,7 @@ export class ParityGenerator {
     SPIN: 1000,
     SIDESWITCH: 130,
     BADBRACKET: 40,
+    OTHER: 0,
   }
 
   private WEIGHTS: { [key: string]: number } = {
@@ -57,6 +58,7 @@ export class ParityGenerator {
     SPIN: 1000,
     SIDESWITCH: 130,
     BADBRACKET: 40,
+    OTHER: 0,
   }
 
   constructor(app: App, type: string) {
@@ -123,8 +125,8 @@ clear(): clear parity highlights`)
     return this.beatOverrides.addNoteOverride(beat, col, foot)
   }
 
-  addRowOverride(beat: number, feet: Foot[]): boolean {
-    return this.beatOverrides.addRowOverride(beat, feet)
+  addBeatOverride(beat: number, feet: Foot[]): boolean {
+    return this.beatOverrides.addBeatOverride(beat, feet)
   }
 
   removeNoteOverride(beat: number, col: number): boolean {
@@ -206,6 +208,14 @@ clear(): clear parity highlights`)
       }
     }
     return nodes
+  }
+
+  getOverridesByRow() {
+    const notedata = this.app.chartManager.loadedChart?.getNotedata()
+    if (!notedata) return []
+    const rows = this.parityGenInternal.createRows(notedata)
+    const overridesByRow = this.beatOverrides.getOverridesByRow(rows)
+    return overridesByRow
   }
 
   // Loads pre-calculated note parity data from json string

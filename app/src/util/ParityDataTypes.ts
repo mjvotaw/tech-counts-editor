@@ -17,6 +17,26 @@ export interface FootPlacement {
   rightBracket: boolean
 }
 
+export const ZERO_WEIGHT: { [key: string]: number } = {
+  DOUBLESTEP: 0,
+  BRACKETJACK: 0,
+  JACK: 0,
+  JUMP: 0,
+  BRACKETTAP: 0,
+  HOLDSWITCH: 0,
+  MINE: 0,
+  FOOTSWITCH: 0,
+  MISSED_FOOTSWITCH: 0,
+  FACING: 0,
+  DISTANCE: 0,
+  SPIN: 0,
+  SIDESWITCH: 0,
+  BADBRACKET: 0,
+  OTHER: 0,
+  OVERRIDE: 0,
+  TOTAL: 0,
+}
+
 export class State {
   idx: number = -1
   columns: Foot[] = []
@@ -219,7 +239,10 @@ export class StepParityGraph {
   // An array of a pairing: a number, which is the index of the neight node,
   // and an array of numbers where each number correstponds to a certain weight
   //
-  serializeMinimalNodes(indent: boolean): string {
+
+  private weightsToSkip: string[] = ["TOTAL", "OVERRIDE"]
+
+  toSerializableMinimalNodes() {
     const serializedNodes = this.nodes.map(n => n.toSerializable())
 
     const minimalNodes = serializedNodes.map(n => n.neighbors).flat()
@@ -227,13 +250,17 @@ export class StepParityGraph {
       const [neighbor, cost] = n
       const onlyCosts: number[] = []
       for (const c in cost) {
-        if (c != "TOTAL") {
+        if (!this.weightsToSkip.includes(c)) {
           onlyCosts.push(cost[c])
         }
       }
       return [neighbor, onlyCosts]
     })
-    return JSON.stringify(evenMinimalerNodes, null, indent ? 2 : undefined)
+    return evenMinimalerNodes
+  }
+  serializeMinimalNodes(indent: boolean): string {
+    const serializedNodes = this.toSerializableMinimalNodes()
+    return JSON.stringify(serializedNodes, null, indent ? 2 : undefined)
   }
 }
 
@@ -247,6 +274,18 @@ export class BeatOverrides {
 
   constructor(columnCount: number) {
     this.columnCount = columnCount
+  }
+
+  shouldNodeBeOverridden(node: StepParityNode): boolean {
+    if (this.hasBeatOverride(node.state.beat)) {
+      const override = this.getBeatOverride(node.state.beat)
+      for (let i = 0; i < override.length; i++) {
+        if (override[i] != Foot.NONE && override[i] != node.state.columns[i]) {
+          return true
+        }
+      }
+    }
+    return false
   }
 
   hasBeatOverride(beat: number): boolean {
@@ -298,7 +337,7 @@ export class BeatOverrides {
     return true
   }
 
-  addRowOverride(beat: number, feet: Foot[]): boolean {
+  addBeatOverride(beat: number, feet: Foot[]): boolean {
     const beatStr = beat.toFixed(3)
     const footCount: { [key: number]: number } = {}
     let totalCount = 0
@@ -336,6 +375,17 @@ export class BeatOverrides {
   }
   resetBeatOverrides() {
     this.beatOverrides = {}
+  }
+
+  getOverridesByRow(rows: Row[]): { [key: number]: Foot[] } {
+    const rowOverrides: { [key: number]: Foot[] } = {}
+    for (let r = 0; r < rows.length; r++) {
+      if (this.hasBeatOverride(rows[r].beat)) {
+        const override = this.getBeatOverride(rows[r].beat)
+        rowOverrides[r] = override
+      }
+    }
+    return rowOverrides
   }
 }
 

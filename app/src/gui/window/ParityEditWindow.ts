@@ -171,13 +171,13 @@ export class ParityEditWindow extends Window {
     const footer = document.createElement("div")
     footer.classList.add("footer")
 
-    const showHideWeights = document.createElement("button")
-    showHideWeights.innerText = "Show/Hide Weights"
-    showHideWeights.onclick = () => {
-      this.parityWeightsContainer?.classList.toggle("hidden")
-      this.parityDisplayContainer?.classList.toggle("hidden")
-    }
-    footer.appendChild(showHideWeights)
+    // const showHideWeights = document.createElement("button")
+    // showHideWeights.innerText = "Show/Hide Weights"
+    // showHideWeights.onclick = () => {
+    //   this.parityWeightsContainer?.classList.toggle("hidden")
+    //   this.parityDisplayContainer?.classList.toggle("hidden")
+    // }
+    // footer.appendChild(showHideWeights)
 
     const resetButton = document.createElement("button")
     resetButton.innerText = "Reset All Overrides"
@@ -200,6 +200,13 @@ export class ParityEditWindow extends Window {
       this.saveParity()
     }
     footer.appendChild(saveButton)
+
+    const saveNodesButton = document.createElement("button")
+    saveNodesButton.innerText = "Save Data"
+    saveNodesButton.onclick = () => {
+      this.saveDataForMike()
+    }
+    footer.appendChild(saveNodesButton)
 
     this.innerContainer.appendChild(footer)
   }
@@ -411,6 +418,29 @@ export class ParityEditWindow extends Window {
     const parityJson = window.Parity.serializeStepGraph()
     const error = await this.saveJsonData(parityJson, "step-graph")
 
+    if (error == null) {
+      WaterfallManager.create("Saved Step Graph")
+    } else {
+      WaterfallManager.createFormatted("Failed to save file: " + error, "error")
+    }
+  }
+
+  async saveDataForMike() {
+    if (window.Parity?.lastGraph == undefined) {
+      return
+    }
+
+    const minimalNodes = window.Parity.lastGraph.toSerializableMinimalNodes()
+    const selectedNodes = window.Parity.lastGraph.computeCheapestPath()
+    const overrides = window.Parity.getOverridesByRow()
+
+    const dataToSave = {
+      nodes: minimalNodes,
+      selectedNodes: selectedNodes,
+      overrides: overrides,
+    }
+    const dataJson = JSON.stringify(dataToSave)
+    const error = await this.saveJsonData(dataJson, "node-data")
     if (error == null) {
       WaterfallManager.create("Saved Step Graph")
     } else {

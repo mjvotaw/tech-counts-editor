@@ -23,6 +23,7 @@ import {
   StepParityNode,
   StepParityGraph,
   BeatOverrides,
+  ZERO_WEIGHT,
 } from "./ParityDataTypes"
 import { ParityCostCalculator } from "./ParityCost"
 
@@ -54,7 +55,11 @@ export class ParityGenInternal {
 
     const rows = this.createRows(notedata)
 
-    const graph = this.buildStateGraph(rows, beatOverrides)
+    const graph = this.buildStateGraph(rows, undefined)
+    if (beatOverrides != undefined) {
+      this.applyOverrides(graph, beatOverrides)
+    }
+
     const selectedStates = this.selectStatesForRows(graph, rows.length)
     const parities = selectedStates.map(s => s.columns)
     this.setNoteParity(rows, parities, beatOverrides)
@@ -388,10 +393,26 @@ export class ParityGenInternal {
     while (previousStates.length > 0) {
       const state = previousStates.shift()!
       const node = graph.addOrGetExistingNode(state)
-      graph.addEdge(node, endNode, { TOTAL: 0 })
+      graph.addEdge(node, endNode, { ...ZERO_WEIGHT })
     }
 
     return graph
+  }
+
+  applyOverrides(graph: StepParityGraph, beatOverrides: BeatOverrides) {
+    for (const node of graph.nodes) {
+      if (beatOverrides.shouldNodeBeOverridden(node)) {
+        node.ancestors.forEach((_, aidx) => {
+          const costToNode = graph.nodes[aidx].neighbors.get(node.id)
+          if (costToNode != undefined) {
+            costToNode["OVERRIDE"] += 100000
+            costToNode["TOTAL"] += 100000
+            graph.nodes[aidx].neighbors.set(node.id, { ...costToNode })
+            node.ancestors.set(aidx, { ...costToNode })
+          }
+        })
+      }
+    }
   }
 
   // Creates a new State, which is the result of moving from the given

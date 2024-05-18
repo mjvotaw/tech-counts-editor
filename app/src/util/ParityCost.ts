@@ -20,6 +20,7 @@ export class ParityCostCalculator {
     SPIN: 1000,
     SIDESWITCH: 130,
     BADBRACKET: 40,
+    OTHER: 500,
   }
 
   constructor(
@@ -53,7 +54,6 @@ export class ParityCostCalculator {
     for (const t in costs) {
       costs[t] = 0
     }
-    costs["OTHER"] = 0
 
     const combinedColumns: Foot[] = this.combineColumns(
       initialState,
@@ -158,7 +158,7 @@ export class ParityCostCalculator {
                 initialState.combinedColumns.includes(Foot.RIGHT_TOE)
               )
             )
-              costs["OTHER"] += 500
+              costs["OTHER"] += this.WEIGHTS.OTHER
             break
           case Foot.RIGHT_HEEL:
           case Foot.RIGHT_TOE:
@@ -168,7 +168,7 @@ export class ParityCostCalculator {
                 initialState.combinedColumns.includes(Foot.RIGHT_TOE)
               )
             )
-              costs["OTHER"] += 500
+              costs["OTHER"] += this.WEIGHTS.OTHER
             break
         }
       }
