@@ -9,12 +9,10 @@ import {
   Foot,
   State,
   StepParityGraph,
-  SerializableState,
   StepParityNode,
-  Row,
   BeatOverrides,
 } from "./ParityDataTypes"
-import { ParityGenInternal, FEET, FEET_LABEL } from "./ParityGenInternals"
+import { ParityGenInternal } from "./ParityGenInternals"
 
 export class ParityGenerator {
   private readonly app

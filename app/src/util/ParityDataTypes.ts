@@ -211,6 +211,30 @@ export class StepParityGraph {
     }
     return JSON.stringify(serializableStepGraph, null, indent ? 2 : undefined)
   }
+
+  // Returns the minimum amount of data needed to rebuild this graph,
+  // for doing maths stuff
+  // Returns basically just the neighbors
+  // [number, number[]][]
+  // An array of a pairing: a number, which is the index of the neight node,
+  // and an array of numbers where each number correstponds to a certain weight
+  //
+  serializeMinimalNodes(indent: boolean): string {
+    const serializedNodes = this.nodes.map(n => n.toSerializable())
+
+    const minimalNodes = serializedNodes.map(n => n.neighbors).flat()
+    const evenMinimalerNodes = minimalNodes.map(n => {
+      const [neighbor, cost] = n
+      const onlyCosts: number[] = []
+      for (const c in cost) {
+        if (c != "TOTAL") {
+          onlyCosts.push(cost[c])
+        }
+      }
+      return [neighbor, onlyCosts]
+    })
+    return JSON.stringify(evenMinimalerNodes, null, indent ? 2 : undefined)
+  }
 }
 
 // Holds onto all the data for letting us override the parity for notes.
