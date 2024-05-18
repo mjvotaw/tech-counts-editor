@@ -3,30 +3,66 @@
 
 import { App } from "../App"
 import { EventHandler } from "./EventHandler"
+import { LAYOUT } from "./StageLayouts"
 
 import {
   Foot,
   State,
+  StepParityGraph,
   SerializableState,
   StepParityNode,
+  Row,
 } from "./ParityDataTypes"
-import { ParityGenInternal } from "./ParityGenInternals"
-
-export const FEET = [
-  Foot.LEFT_HEEL,
-  Foot.LEFT_TOE,
-  Foot.RIGHT_HEEL,
-  Foot.RIGHT_TOE,
-]
-export const FEET_LABEL = "LlRr"
+import { ParityGenInternal, FEET, FEET_LABEL } from "./ParityGenInternals"
 
 export class ParityGenerator {
   private readonly app
+  private layout
   private parityGenInternal: ParityGenInternal
   private isEnabled: boolean = false
 
+  private beatOverrides: { [key: string]: Foot[] } = {}
+  private lastGraph?: StepParityGraph
+  private lastStates?: State[]
+  private lastParities: Foot[][] = []
+
+  private DEFAULT_WEIGHTS: { [key: string]: number } = {
+    DOUBLESTEP: 850,
+    BRACKETJACK: 20,
+    JACK: 30,
+    JUMP: 30,
+    BRACKETTAP: 400,
+    HOLDSWITCH: 55,
+    MINE: 10000,
+    FOOTSWITCH: 5000,
+    MISSED_FOOTSWITCH: 500,
+    FACING: 2,
+    DISTANCE: 6,
+    SPIN: 1000,
+    SIDESWITCH: 130,
+    BADBRACKET: 40,
+  }
+
+  private WEIGHTS: { [key: string]: number } = {
+    DOUBLESTEP: 850,
+    BRACKETJACK: 20,
+    JACK: 30,
+    JUMP: 30,
+    BRACKETTAP: 400,
+    HOLDSWITCH: 55,
+    MINE: 10000,
+    FOOTSWITCH: 5000,
+    MISSED_FOOTSWITCH: 500,
+    FACING: 2,
+    DISTANCE: 6,
+    SPIN: 1000,
+    SIDESWITCH: 130,
+    BADBRACKET: 40,
+  }
+
   constructor(app: App, type: string) {
     this.app = app
+    this.layout = LAYOUT[type]
     this.parityGenInternal = new ParityGenInternal(type)
   }
 
@@ -46,7 +82,15 @@ clear(): clear parity highlights`)
     const notedata = this.app.chartManager.loadedChart?.getNotedata()
     if (!notedata) return
     this.isAnalyzing = true
-    this.parityGenInternal.analyze(notedata)
+    const { graph, selectedStates, parities } = this.parityGenInternal.analyze(
+      notedata,
+      this.beatOverrides,
+      this.WEIGHTS
+    )
+    this.lastGraph = graph
+    this.lastStates = selectedStates
+    this.lastParities = parities
+
     this.isAnalyzing = false
     EventHandler.emit("parityUpdated")
   }
@@ -59,59 +103,218 @@ clear(): clear parity highlights`)
     return this.isEnabled
   }
 
+  //
+  // Methods for checking/setting overrides
+  //
+
   hasBeatOverride(beat: number): boolean {
-    return this.parityGenInternal.hasBeatOverride(beat)
+    const beatStr = beat.toFixed(3)
+    if (this.beatOverrides[beatStr] != undefined) {
+      for (const f of this.beatOverrides[beatStr]) {
+        if (f != Foot.NONE) {
+          return true
+        }
+      }
+    }
+    return false
   }
 
   getBeatOverride(beat: number): Foot[] {
-    return this.parityGenInternal.getBeatOverride(beat)
+    const beatStr = beat.toFixed(3)
+    if (this.beatOverrides[beatStr] != undefined) {
+      return this.beatOverrides[beatStr]
+    }
+    const empty: Array<Foot> = []
+    for (let i = 0; i < this.layout.columnCount; i++) {
+      empty.push(Foot.NONE)
+    }
+    return empty
   }
 
   getNoteOverride(beat: number, col: number): Foot {
-    return this.parityGenInternal.getNoteOverride(beat, col)
+    const beatStr = beat.toFixed(3)
+    if (this.beatOverrides[beatStr] != undefined) {
+      return this.beatOverrides[beatStr][col]
+    }
+    return Foot.NONE
   }
 
   addNoteOverride(beat: number, col: number, foot: Foot): boolean {
-    return this.parityGenInternal.addNoteOverride(beat, col, foot)
+    const beatStr = beat.toFixed(3)
+    if (this.beatOverrides[beatStr] == undefined) {
+      this.beatOverrides[beatStr] = new Array(this.layout.columnCount).fill(
+        Foot.NONE
+      )
+    }
+    // Check that this row doesn't already contain an override for the given foot. If so, return false
+    if (
+      foot != Foot.NONE &&
+      this.beatOverrides[beatStr][col] != foot &&
+      this.beatOverrides[beatStr].includes(foot)
+    ) {
+      return false
+    }
+    this.beatOverrides[beatStr][col] = foot
+    return true
   }
 
   addRowOverride(beat: number, feet: Foot[]): boolean {
-    return this.parityGenInternal.addRowOverride(beat, feet)
+    const beatStr = beat.toFixed(3)
+    const footCount: { [key: number]: number } = {}
+    let totalCount = 0
+    for (const foot of feet) {
+      footCount[foot] = (footCount[foot] || 0) + 1
+      totalCount += 1
+      if (foot != Foot.NONE && footCount[foot] > 1) {
+        return false
+      }
+    }
+    if (totalCount == 0) {
+      return false
+    }
+
+    this.beatOverrides[beatStr] = feet
+    return true
   }
 
   removeNoteOverride(beat: number, col: number): boolean {
-    return this.parityGenInternal.removeNoteOverride(beat, col)
+    const beatStr = beat.toFixed(3)
+    if (this.beatOverrides[beatStr] != undefined) {
+      this.beatOverrides[beatStr][col] = Foot.NONE
+    }
+    return true
   }
 
   removeBeatOverride(beat: number): boolean {
-    return this.parityGenInternal.removeBeatOverride(beat)
+    const beatStr = beat.toFixed(3)
+    delete this.beatOverrides[beatStr]
+    return true
   }
 
   resetBeatOverrides() {
-    this.parityGenInternal.resetBeatOverrides()
+    this.beatOverrides = {}
   }
 
+  //
+  // Retrieving various data by beat/row
+  //
+
   getParityForBeat(beat: number): Foot[] | undefined {
-    return this.parityGenInternal.getParityForBeat(beat)
+    if (this.lastStates == undefined) {
+      return undefined
+    }
+    for (const state of this.lastStates) {
+      if (Math.abs(state.beat - beat) < 0.0001) {
+        return state.columns
+      }
+      if (state.beat > beat) {
+        break
+      }
+    }
+    return undefined
   }
 
   getNodeForBeat(beat: number): StepParityNode | undefined {
-    return this.parityGenInternal.getNodeForBeat(beat)
+    if (this.lastGraph == undefined || this.lastStates == undefined) {
+      return undefined
+    }
+
+    for (const state of this.lastStates) {
+      if (Math.abs(state.beat - beat) < 0.0001) {
+        return this.lastGraph.addOrGetExistingNode(state)
+      }
+      if (state.beat > beat) {
+        break
+      }
+    }
+    return undefined
   }
 
   getAllNodesForBeat(beat: number): StepParityNode[] {
-    return this.parityGenInternal.getAllNodesForBeat(beat)
+    if (this.lastGraph == undefined) {
+      return []
+    }
+
+    const nodes: StepParityNode[] = []
+
+    for (const node of this.lastGraph.nodes) {
+      if (Math.abs(node.state.beat - beat) < 0.0001) {
+        nodes.push(node)
+      } else if (node.state.beat > beat) {
+        break
+      }
+    }
+    return nodes
   }
 
   getAllNodesForRow(row: number): StepParityNode[] {
-    return this.parityGenInternal.getAllNodesForRow(row)
+    if (this.lastGraph == undefined) {
+      return []
+    }
+
+    const nodes: StepParityNode[] = []
+
+    for (const node of this.lastGraph.nodes) {
+      if (node.state.rowIndex == row) {
+        nodes.push(node)
+      } else if (node.state.rowIndex > row) {
+        break
+      }
+    }
+    return nodes
   }
 
   // Loads pre-calculated note parity data from json string
   loadParityData(jsonString: string): boolean {
     const notedata = this.app.chartManager.loadedChart?.getNotedata()
     if (!notedata) return false
-    return this.parityGenInternal.loadParityData(jsonString, notedata)
+    const rows = this.parityGenInternal.createRows(notedata)
+    const parities = this.deserializeParityData(jsonString)
+    if (parities == undefined) {
+      return false
+    }
+    const paritiesWithoutOverrides = this.parityGenInternal.generateParities(
+      false,
+      notedata
+    )
+
+    // This is mostly a sanity check
+    if (
+      parities.length != rows.length ||
+      parities.length != paritiesWithoutOverrides.length
+    ) {
+      return false
+    }
+
+    // Now that we've loaded the json data, we need to figure out if it represents any
+    // notes that were overridden.
+    const rowDifferences = this.getParityDifferences(
+      paritiesWithoutOverrides,
+      parities
+    )
+    // And then map those differences to beat instead of row
+
+    const beatDifferences: { [key: string]: Foot[] } = {}
+    for (const rowIndex in rowDifferences) {
+      const beatStr = rows[rowIndex].beat.toFixed(3)
+      beatDifferences[beatStr] = rowDifferences[rowIndex]
+    }
+    this.lastParities = parities
+    this.beatOverrides = beatDifferences
+    this.setNoteParity(rows, this.lastParities)
+    return true
+  }
+
+  setNoteParity(rows: Row[], parities: Foot[][]) {
+    for (let i = 0; i < rows.length; i++) {
+      const parityForRow = parities[i]
+      for (let j = 0; j < this.layout.columnCount; j++) {
+        if (rows[i].notes[j]) {
+          rows[i].notes[j]!.parity = FEET_LABEL[FEET.indexOf(parityForRow[j])]
+          rows[i].notes[j]!.parityOverride = this.hasBeatOverride(rows[i].beat)
+        }
+      }
+    }
   }
 
   // Returns rows that differ between p1 and p2
@@ -141,24 +344,26 @@ clear(): clear parity highlights`)
 
   // This just returns the `columns` for each row, indicating the position of
   // each foot for a given row
+  // This just returns the `columns` for each row, indicating the position of
+  // each foot for a given row
   serializeParityData(indent: boolean = false): string {
-    return this.parityGenInternal.serializeParityData(indent)
+    return JSON.stringify(this.lastParities, null, indent ? 2 : undefined)
   }
 
   deserializeParityData(jsonString: string): Foot[][] | undefined {
-    return this.parityGenInternal.deserializeParityData(jsonString)
+    try {
+      const deserialized: Foot[][] = JSON.parse(jsonString)
+      return deserialized
+    } catch (e) {
+      return undefined
+    }
   }
 
   serializeStepGraph(indent: boolean = false): string {
-    return this.parityGenInternal.serializeStepGraph(indent)
-  }
-
-  statesToSerializedStates(states: State[]): SerializableState[] {
-    return this.parityGenInternal.statesToSerializedStates(states)
-  }
-
-  stateToSerializedState(state: State): SerializableState {
-    return this.parityGenInternal.stateToSerializedState(state)
+    if (this.lastGraph != undefined) {
+      return this.lastGraph.serialized(indent)
+    }
+    return ""
   }
 
   clear() {
@@ -167,19 +372,31 @@ clear(): clear parity highlights`)
     notedata.forEach(note => (note.parity = undefined))
   }
 
+  //
+  // Getting/setting weights
+  //
+
   getWeights(): { [key: string]: number } {
-    return this.parityGenInternal.costCalculator.getWeights()
+    const weightsCopy: { [key: string]: number } = JSON.parse(
+      JSON.stringify(this.WEIGHTS)
+    )
+    return weightsCopy
   }
 
   getDefaultWeights(): { [key: string]: number } {
-    return this.parityGenInternal.costCalculator.getDefaultWeights()
+    const weightsCopy: { [key: string]: number } = JSON.parse(
+      JSON.stringify(this.DEFAULT_WEIGHTS)
+    )
+    return weightsCopy
   }
 
   updateWeights(newWeights: { [key: string]: number }) {
-    this.parityGenInternal.costCalculator.updateWeights(newWeights)
+    for (const k in this.WEIGHTS) {
+      this.WEIGHTS[k] = newWeights[k] || this.WEIGHTS[k]
+    }
   }
 
   resetWeights() {
-    this.parityGenInternal.costCalculator.resetWeights()
+    this.updateWeights(this.DEFAULT_WEIGHTS)
   }
 }

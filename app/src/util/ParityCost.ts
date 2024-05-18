@@ -5,23 +5,6 @@ import { LAYOUT, StageLayout } from "./StageLayouts"
 export class ParityCostCalculator {
   private readonly layout: StageLayout
 
-  private DEFAULT_WEIGHTS: { [key: string]: number } = {
-    DOUBLESTEP: 850,
-    BRACKETJACK: 20,
-    JACK: 30,
-    JUMP: 30,
-    BRACKETTAP: 400,
-    HOLDSWITCH: 55,
-    MINE: 10000,
-    FOOTSWITCH: 5000,
-    MISSED_FOOTSWITCH: 500,
-    FACING: 2,
-    DISTANCE: 6,
-    SPIN: 1000,
-    SIDESWITCH: 130,
-    BADBRACKET: 40,
-  }
-
   private WEIGHTS: { [key: string]: number } = {
     DOUBLESTEP: 850,
     BRACKETJACK: 20,
@@ -39,8 +22,20 @@ export class ParityCostCalculator {
     BADBRACKET: 40,
   }
 
-  constructor(type: string) {
+  constructor(
+    type: string,
+    weights: { [key: string]: number } | undefined = undefined
+  ) {
     this.layout = LAYOUT[type]
+    if (weights != undefined) {
+      this.WEIGHTS = weights
+    }
+  }
+
+  setWeights(newWeights: { [key: string]: number }) {
+    for (const k in this.WEIGHTS) {
+      this.WEIGHTS[k] = newWeights[k] || this.WEIGHTS[k]
+    }
   }
 
   getActionCost(
@@ -673,29 +668,5 @@ export class ParityCostCalculator {
     }
 
     return placement
-  }
-
-  getWeights(): { [key: string]: number } {
-    const weightsCopy: { [key: string]: number } = JSON.parse(
-      JSON.stringify(this.WEIGHTS)
-    )
-    return weightsCopy
-  }
-
-  getDefaultWeights(): { [key: string]: number } {
-    const weightsCopy: { [key: string]: number } = JSON.parse(
-      JSON.stringify(this.DEFAULT_WEIGHTS)
-    )
-    return weightsCopy
-  }
-
-  updateWeights(newWeights: { [key: string]: number }) {
-    for (const k in this.WEIGHTS) {
-      this.WEIGHTS[k] = newWeights[k] || this.WEIGHTS[k]
-    }
-  }
-
-  resetWeights() {
-    this.updateWeights(this.DEFAULT_WEIGHTS)
   }
 }

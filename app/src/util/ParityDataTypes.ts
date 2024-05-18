@@ -17,15 +17,40 @@ export interface FootPlacement {
   rightBracket: boolean
 }
 
-export interface State {
-  idx: number
-  columns: Foot[]
-  combinedColumns: Foot[]
-  movedFeet: Set<Foot>
-  holdFeet: Set<Foot>
+export class State {
+  idx: number = -1
+  columns: Foot[] = []
+  combinedColumns: Foot[] = []
+  movedFeet: Set<Foot> = new Set()
+  holdFeet: Set<Foot> = new Set()
   second: number
   beat: number
   rowIndex: number
+
+  constructor(rowIndex: number, second: number, beat: number, columns: Foot[]) {
+    this.rowIndex = rowIndex
+    this.second = second
+    this.beat = beat
+    this.columns = [...columns]
+  }
+
+  toSerializable(): SerializableState {
+    const serializableState: SerializableState = {
+      idx: this.idx,
+      beat: this.beat,
+      combinedColumns: this.combinedColumns,
+      columns: [...this.columns],
+      movedFeet: [...this.movedFeet],
+      holdFeet: [...this.holdFeet],
+      second: this.second,
+      rowIndex: this.rowIndex,
+    }
+    return serializableState
+  }
+  serialized(): string {
+    const serializableState = this.toSerializable()
+    return JSON.stringify(serializableState)
+  }
 }
 
 // because sets aren't serializable, this is an intermediate
@@ -66,7 +91,7 @@ export class StepParityNode {
     this.id = id
   }
 
-  serialized(): SerializableNode {
+  toSerializable(): SerializableNode {
     const mappedStuff: [number, { [id: string]: number }][] = []
     this.neighbors.forEach((val, key) => {
       mappedStuff.push([key, val])
@@ -84,6 +109,10 @@ export class StepParityNode {
       ancestors: mappedAncestors,
     }
     return serializableNode
+  }
+  serialized(): string {
+    const serializableNode = this.toSerializable()
+    return JSON.stringify(serializableNode)
   }
 }
 
@@ -173,6 +202,14 @@ export class StepParityGraph {
     }
     shortest_path.reverse()
     return shortest_path
+  }
+
+  serialized(indent: boolean): string {
+    const serializableStepGraph = {
+      states: this.states.map(s => s.toSerializable()),
+      nodes: this.nodes.map(n => n.toSerializable()),
+    }
+    return JSON.stringify(serializableStepGraph, null, indent ? 2 : undefined)
   }
 }
 

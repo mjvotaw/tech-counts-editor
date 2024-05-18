@@ -8,7 +8,7 @@
 // Generates foot parity given notedata
 // Original algorithm by Jewel, polished by tillvit
 
-import { LAYOUT, StagePoint } from "./StageLayouts"
+import { LAYOUT } from "./StageLayouts"
 import {
   HoldNotedataEntry,
   Notedata,
@@ -18,12 +18,10 @@ import {
 
 import {
   Foot,
-  FootPlacement,
   State,
   SerializableState,
   Row,
   StepParityNode,
-  SerializableNode,
   StepParityGraph,
 } from "./ParityDataTypes"
 import { ParityCostCalculator } from "./ParityCost"
@@ -41,24 +39,29 @@ export class ParityGenInternal {
 
   private permuteCache: Map<number, Foot[][]> = new Map()
   private readonly layout
-  private isEnabled: boolean = false
 
   private beatOverrides: { [key: string]: Foot[] } = {}
-  private lastGraph?: StepParityGraph
-  private lastStates?: State[]
-  private lastParities: Foot[][] = []
 
   constructor(type: string) {
     this.layout = LAYOUT[type]
     this.costCalculator = new ParityCostCalculator(type)
   }
 
-  help() {
-    console.log(`Currently only compatible with dance-single.
-Available commands: 
-analyze(): analyze the current chart
-  
-clear(): clear parity highlights`)
+  analyze(
+    notedata: Notedata,
+    beatOverrides: { [key: string]: Foot[] },
+    weights: { [key: string]: number }
+  ): { graph: StepParityGraph; selectedStates: State[]; parities: Foot[][] } {
+    this.beatOverrides = beatOverrides
+    this.costCalculator.setWeights(weights)
+
+    const rows = this.createRows(notedata)
+
+    const graph = this.buildStateGraph(rows, true)
+    const selectedStates = this.selectStatesForRows(graph, rows.length)
+    const parities = selectedStates.map(s => s.columns)
+    this.setNoteParity(rows, parities)
+    return { graph, selectedStates, parities }
   }
 
   calculatePermuteColumnKey(row: Row): number {
@@ -273,24 +276,6 @@ clear(): clear parity highlights`)
     return rows
   }
 
-  private isAnalyzing: boolean = false
-  analyze(notedata: Notedata) {
-    if (this.isAnalyzing) {
-      return
-    }
-    this.isAnalyzing = true
-    const rows = this.createRows(notedata)
-
-    const graph = this.buildStateGraph(rows, true)
-    const states = this.selectStatesForRows(graph, rows.length)
-    const parities = states.map(s => s.columns)
-    this.setNoteParity(rows, parities)
-    this.lastGraph = graph
-    this.lastStates = states
-    this.lastParities = parities
-    this.isAnalyzing = false
-  }
-
   generateParities(use_overrides: boolean, notedata: Notedata): Foot[][] {
     const rows = this.createRows(notedata)
 
@@ -329,16 +314,7 @@ clear(): clear parity highlights`)
   // and one that represents the end of the song, after the final note.
   buildStateGraph(rows: Row[], use_overrides: boolean): StepParityGraph {
     const graph: StepParityGraph = new StepParityGraph()
-    const beginningState: State = {
-      idx: -1,
-      rowIndex: -1,
-      second: rows[0].second - 1,
-      beat: -1,
-      columns: [],
-      combinedColumns: [],
-      movedFeet: new Set(),
-      holdFeet: new Set(),
-    }
+    const beginningState: State = new State(-1, rows[0].second - 1, -1, [])
 
     const startNode: StepParityNode = graph.addOrGetExistingNode(beginningState)
     graph.startNode = startNode.id
@@ -387,16 +363,13 @@ clear(): clear parity highlights`)
     // at this point, previousStates holds all of the states for the very last row,
     // which just get connected to the endState
 
-    const endState: State = {
-      idx: -1,
-      rowIndex: rows.length,
-      second: rows[rows.length - 1].second + 1,
-      beat: rows[rows.length - 1].beat + 1,
-      columns: [],
-      combinedColumns: [],
-      movedFeet: new Set(),
-      holdFeet: new Set(),
-    }
+    const endState: State = new State(
+      rows.length,
+      rows[rows.length - 1].second + 1,
+      rows[rows.length - 1].beat + 1,
+      []
+    )
+
     const endNode = graph.addOrGetExistingNode(endState)
     graph.endNode = endNode.id
     while (previousStates.length > 0) {
@@ -417,16 +390,12 @@ clear(): clear parity highlights`)
     rowIndex: number,
     columns: Foot[]
   ): State {
-    const resultState: State = {
-      idx: -1,
-      rowIndex: rowIndex,
-      second: row.second,
-      beat: row.beat,
-      columns: columns,
-      combinedColumns: [],
-      movedFeet: new Set(),
-      holdFeet: new Set(),
-    }
+    const resultState: State = new State(
+      rowIndex,
+      row.second,
+      row.beat,
+      columns
+    )
 
     for (let i = 0; i < this.layout.columnCount; i++) {
       resultState.combinedColumns.push(Foot.NONE)
@@ -447,13 +416,9 @@ clear(): clear parity highlights`)
     return resultState
   }
 
-  setEnabled(enabled: boolean) {
-    this.isEnabled = enabled
-  }
-
-  getIsEnabled(): boolean {
-    return this.isEnabled
-  }
+  //
+  // Methods for checking/setting overrides
+  //
 
   hasBeatOverride(beat: number): boolean {
     const beatStr = beat.toFixed(3)
@@ -543,107 +508,6 @@ clear(): clear parity highlights`)
     this.beatOverrides = {}
   }
 
-  getParityForBeat(beat: number): Foot[] | undefined {
-    if (this.lastStates == undefined) {
-      return undefined
-    }
-    for (const state of this.lastStates) {
-      if (Math.abs(state.beat - beat) < 0.0001) {
-        return state.columns
-      }
-      if (state.beat > beat) {
-        break
-      }
-    }
-    return undefined
-  }
-
-  getNodeForBeat(beat: number): StepParityNode | undefined {
-    if (this.lastGraph == undefined || this.lastStates == undefined) {
-      return undefined
-    }
-
-    for (const state of this.lastStates) {
-      if (Math.abs(state.beat - beat) < 0.0001) {
-        return this.lastGraph.addOrGetExistingNode(state)
-      }
-      if (state.beat > beat) {
-        break
-      }
-    }
-    return undefined
-  }
-
-  getAllNodesForBeat(beat: number): StepParityNode[] {
-    if (this.lastGraph == undefined) {
-      return []
-    }
-
-    const nodes: StepParityNode[] = []
-
-    for (const node of this.lastGraph.nodes) {
-      if (Math.abs(node.state.beat - beat) < 0.0001) {
-        nodes.push(node)
-      } else if (node.state.beat > beat) {
-        break
-      }
-    }
-    return nodes
-  }
-
-  getAllNodesForRow(row: number): StepParityNode[] {
-    if (this.lastGraph == undefined) {
-      return []
-    }
-
-    const nodes: StepParityNode[] = []
-
-    for (const node of this.lastGraph.nodes) {
-      if (node.state.rowIndex == row) {
-        nodes.push(node)
-      } else if (node.state.rowIndex > row) {
-        break
-      }
-    }
-    return nodes
-  }
-
-  // Loads pre-calculated note parity data from json string
-  loadParityData(jsonString: string, notedata: Notedata): boolean {
-    const rows = this.createRows(notedata)
-    const parities = this.deserializeParityData(jsonString)
-    if (parities == undefined) {
-      return false
-    }
-    const paritiesWithoutOverrides = this.generateParities(false, notedata)
-
-    // This is mostly a sanity check
-    if (
-      parities.length != rows.length ||
-      parities.length != paritiesWithoutOverrides.length
-    ) {
-      return false
-    }
-
-    // Now that we've loaded the json data, we need to figure out if it represents any
-    // notes that were overridden.
-    const rowDifferences = this.getParityDifferences(
-      paritiesWithoutOverrides,
-      parities
-    )
-    // And then map those differences to beat instead of row
-
-    const beatDifferences: { [key: string]: Foot[] } = {}
-    for (const rowIndex in rowDifferences) {
-      const beatStr = rows[rowIndex].beat.toFixed(3)
-      beatDifferences[beatStr] = rowDifferences[rowIndex]
-    }
-    this.lastParities = parities
-    this.beatOverrides = beatDifferences
-    this.setNoteParity(rows, this.lastParities)
-    return true
-  }
-
   // Returns rows that differ between p1 and p2
   // For a given row, the values of p2 that differ from p1 are returned
   // For examples, given p1 = [[0010], [3100]], p2 = [[0010], [2100]]
@@ -668,81 +532,6 @@ clear(): clear parity highlights`)
     }
     return rowDifferences
   }
-
-  // This just returns the `columns` for each row, indicating the position of
-  // each foot for a given row
-  serializeParityData(indent: boolean = false): string {
-    return JSON.stringify(this.lastParities, null, indent ? 2 : undefined)
-  }
-
-  deserializeParityData(jsonString: string): Foot[][] | undefined {
-    try {
-      const deserialized: Foot[][] = JSON.parse(jsonString)
-      return deserialized
-    } catch (e) {
-      return undefined
-    }
-  }
-
-  serializeStepGraph(indent: boolean = false): string {
-    if (this.lastGraph != undefined) {
-      const serializableStepGraph = {
-        states: this.statesToSerializedStates(this.lastGraph.states),
-        nodes: this.lastGraph.nodes.map(n => n.serialized()),
-      }
-      return JSON.stringify(serializableStepGraph, null, indent ? 2 : undefined)
-    }
-    return ""
-  }
-
-  statesToSerializedStates(states: State[]): SerializableState[] {
-    const serializableStates: Array<SerializableState> = []
-    for (const state of states) {
-      serializableStates.push(this.stateToSerializedState(state))
-    }
-    return serializableStates
-  }
-
-  stateToSerializedState(state: State): SerializableState {
-    const serializableState: SerializableState = {
-      idx: state.idx,
-      beat: state.beat,
-      combinedColumns: state.combinedColumns,
-      columns: state.columns,
-      movedFeet: [...state.movedFeet],
-      holdFeet: [...state.holdFeet],
-      second: state.second,
-      rowIndex: state.rowIndex,
-    }
-    return serializableState
-  }
-
-  compareCols(a: number[], b: number[]) {
-    if (a === b) return true
-    if (a == null || b == null) return false
-    if (a.length !== b.length) return false
-
-    for (let i = 0; i < a.length; ++i) {
-      if (a[i] !== b[i]) return false
-    }
-    return true
-  }
-
-  getWeights(): { [key: string]: number } {
-    return this.costCalculator.getWeights()
-  }
-
-  getDefaultWeights(): { [key: string]: number } {
-    return this.costCalculator.getDefaultWeights()
-  }
-
-  updateWeights(newWeights: { [key: string]: number }) {
-    this.costCalculator.updateWeights(newWeights)
-  }
-
-  resetWeights() {
-    this.costCalculator.resetWeights()
-  }
 }
 
 function arraysAreEqual<T>(array1: T[], array2: T[]): boolean {
@@ -756,18 +545,6 @@ function arraysAreEqual<T>(array1: T[], array2: T[]): boolean {
     }
   }
 
-  return true
-}
-
-function setsAreEqual<T>(set1: Set<T>, set2: Set<T>): boolean {
-  if (set1.size !== set2.size) {
-    return false
-  }
-  for (const item of set1) {
-    if (!set2.has(item)) {
-      return false
-    }
-  }
   return true
 }
 
