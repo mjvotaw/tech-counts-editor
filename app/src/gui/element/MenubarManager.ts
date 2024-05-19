@@ -3,12 +3,14 @@ import { KEYBIND_DATA } from "../../data/KeybindData"
 import { MENUBAR_DATA, MenuOption } from "../../data/MenubarData"
 import { Flags } from "../../util/Flags"
 import { Keybinds } from "../../util/Keybinds"
+import { EventHandler } from "../../util/EventHandler"
+import { basename, dirname } from "../../util/Path"
 import { Icons } from "../Icons"
 
 export class MenubarManager {
   app: App
   view: HTMLDivElement
-
+  titleDisplay: HTMLDivElement
   constructor(app: App, view: HTMLDivElement) {
     this.app = app
     this.view = view
@@ -17,6 +19,13 @@ export class MenubarManager {
       this.createElement(value)
     )
     view.replaceChildren(...elements)
+
+    this.titleDisplay = document.createElement("div")
+
+    this.titleDisplay.classList.add("menu-song-title")
+    view.appendChild(this.titleDisplay)
+
+    EventHandler.on("chartLoaded", this.displaySongAndChart.bind(this))
   }
 
   createElement(data: MenuOption): HTMLDivElement {
@@ -111,5 +120,22 @@ export class MenubarManager {
       return menuitem
     }
     return document.createElement("div")
+  }
+
+  displaySongAndChart() {
+    if (
+      this.app.chartManager.loadedSM == undefined ||
+      this.app.chartManager.loadedChart == undefined
+    ) {
+      this.titleDisplay.innerText = ""
+    } else {
+      const smPath = this.app.chartManager.smPath
+      const dir = dirname(smPath)
+      const fileName = basename(dir)
+      const difficulty =
+        this.app.chartManager.loadedChart?.difficulty || "No Difficulty"
+
+      this.titleDisplay.innerText = `${fileName} - ${difficulty}`
+    }
   }
 }

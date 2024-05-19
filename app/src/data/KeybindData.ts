@@ -224,6 +224,15 @@ export const KEYBIND_DATA: { [key: string]: Keybind } = {
       }
     },
   },
+  nextSong: {
+    label: "Open Next Song...",
+    bindLabel: "Open next song",
+    combos: [{ key: "N", mods: [DEF_MOD, Modifier.ALT] }],
+    disabled: app => !app.chartManager.loadedSM || !Flags.openWindows,
+    callback: app => {
+      app.chartManager.loadNextSM()
+    },
+  },
   songProperties: {
     label: "Song properties...",
     bindLabel: "Open song properties",

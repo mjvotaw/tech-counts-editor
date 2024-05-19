@@ -844,6 +844,53 @@ export class ChartManager {
   }
 
   /**
+   * Loads the next simfile, relative to the current smPath's
+   * parent folder. This assumes that smPath is part of a pack of simfiles.
+   */
+  async loadNextSM() {
+    if (this.loadedSM == undefined) {
+      return
+    }
+
+    const packFolder = dirname(dirname(this.smPath))
+    const smFolder = basename(dirname(this.smPath))
+    const folders = await FileHandler.getDirectoryFolders(packFolder)
+    folders.sort((a, b) => a.name.localeCompare(b.name))
+    const currentFolderIndex = folders.findIndex(
+      dirHandle => dirHandle.name == smFolder
+    )
+    if (currentFolderIndex == -1) {
+      console.log(`no folder matches ${smFolder} ??`)
+      return
+    }
+    const nextFolderIndex = currentFolderIndex + 1
+    if (folders.length <= nextFolderIndex) {
+      console.log("No next folder")
+      return
+    }
+    const nextFolder = folders[nextFolderIndex]
+
+    const nextFolderContents = await FileHandler.getDirectoryFiles(nextFolder)
+    const simfiles = nextFolderContents.filter(
+      file => file.name.endsWith(".ssc") || file.name.endsWith(".sm")
+    )
+    if (simfiles.length == 0) {
+      console.log(`No simfiles found in next song folder ${nextFolder.name}`)
+      return
+    }
+    let selectedSimfile = simfiles[0]
+    if (simfiles.length > 0) {
+      const sscFile = simfiles.find(file => file.name.endsWith(".ssc"))
+      if (sscFile != undefined) {
+        selectedSimfile = sscFile
+      }
+    }
+
+    const newSimfilePath = `${packFolder}/${nextFolder.name}/${selectedSimfile.name}`
+    console.log(`Loading next song at ${newSimfilePath}`)
+    this.loadSM(newSimfilePath)
+  }
+  /**
    * Finds the audio file associated with the music path.
    * If none is found, attempt to find other audio files in the directory.
    *

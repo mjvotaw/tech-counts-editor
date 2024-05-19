@@ -299,15 +299,13 @@ export class ParityEditWindow extends Window {
   }
 
   updateParityDisplay() {
-    console.log("updateParityDisplay")
     if (this.app.chartManager == undefined || window.Parity == undefined) {
       return
     }
     const beat = this.app.chartManager?.getBeat()
     const parity = window.Parity?.getParityForBeat(beat)
     const overrides = window.Parity?.getBeatOverride(beat)
-    const node = window.Parity?.getNodeForBeat(beat)
-    console.log(node)
+
     const optionLabels = [
       "None",
       "Left Heel",

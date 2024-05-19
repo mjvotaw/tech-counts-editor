@@ -50,6 +50,10 @@ export const MENUBAR_DATA: { [key: string]: MenuMain } = {
         id: "openSong",
       },
       {
+        type: "selection",
+        id: "nextSong",
+      },
+      {
         type: "separator",
       },
       {
