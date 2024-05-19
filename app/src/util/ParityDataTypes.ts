@@ -236,7 +236,7 @@ export class StepParityGraph {
   // for doing maths stuff
   // Returns basically just the neighbors
   // [number, number[]][]
-  // An array of a pairing: a number, which is the index of the neight node,
+  // An array of a pairing: a number, which is the index of the neighboring node,
   // and an array of numbers where each number correstponds to a certain weight
   //
 
@@ -245,18 +245,21 @@ export class StepParityGraph {
   toSerializableMinimalNodes() {
     const serializedNodes = this.nodes.map(n => n.toSerializable())
 
-    const minimalNodes = serializedNodes.map(n => n.neighbors).flat()
-    const evenMinimalerNodes = minimalNodes.map(n => {
-      const [neighbor, cost] = n
-      const onlyCosts: number[] = []
-      for (const c in cost) {
-        if (!this.weightsToSkip.includes(c)) {
-          onlyCosts.push(cost[c])
+    const minimalNodes = serializedNodes.map(n => {
+      const minimalerNeighbors = []
+      for (const neighbor of n.neighbors) {
+        const [nIdx, cost] = neighbor
+        const onlyCosts: number[] = []
+        for (const c in cost) {
+          if (!this.weightsToSkip.includes(c)) {
+            onlyCosts.push(cost[c])
+          }
         }
+        minimalerNeighbors.push([nIdx, onlyCosts])
       }
-      return [neighbor, onlyCosts]
+      return minimalerNeighbors
     })
-    return evenMinimalerNodes
+    return minimalNodes
   }
   serializeMinimalNodes(indent: boolean): string {
     const serializedNodes = this.toSerializableMinimalNodes()
