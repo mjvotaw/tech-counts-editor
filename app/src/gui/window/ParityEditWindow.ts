@@ -202,7 +202,7 @@ export class ParityEditWindow extends Window {
     footer.appendChild(saveButton)
 
     const saveNodesButton = document.createElement("button")
-    saveNodesButton.innerText = "Save Data"
+    saveNodesButton.innerText = "Save Node Data"
     saveNodesButton.onclick = () => {
       this.saveDataForMike()
     }
@@ -440,7 +440,7 @@ export class ParityEditWindow extends Window {
     const dataJson = JSON.stringify(dataToSave)
     const error = await this.saveJsonData(dataJson, "node-data")
     if (error == null) {
-      WaterfallManager.create("Saved Step Graph")
+      WaterfallManager.create("Saved Node Data")
     } else {
       WaterfallManager.createFormatted("Failed to save file: " + error, "error")
     }

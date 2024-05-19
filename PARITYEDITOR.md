@@ -21,9 +21,14 @@ This window shows you the current parity settings for the current beat.
 
   This will open a small textarea for you to paste JSON into (dealing with file uploading is slightly nontrivial, and I didn't feel like implementing that right now)
 
-- Export Parity Data
+- Save Parity Data
 
   This will save the parity data for the given stepchart to JSON, named "[song title]-[difficulty]-parity.json"
+
+- Save Node Data
+  
+  This will save a json file that contains several parts. Please send these to me.
+
 
 
 Besides this window, you can also edit the parity for any note using the context menu. Just right click the note, and select `Set Parity`:
@@ -37,6 +42,11 @@ The colors being used are:
 - Right Heel = darker orange
 - Right Toe = lighter orange
 
+![Parity Note Colors](assets/preview/parityNoteColors.png "Parity Note Color Examples")
+
+Rows that have had their parity manually changed will have a red line on the bottom:
+
+![Parity Note Override Example](assets/preview/parityNoteOverrideExample.png "Parity Note Override Example")
 
 ## Known Issues
 
