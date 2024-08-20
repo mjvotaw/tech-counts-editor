@@ -82,20 +82,20 @@ export class StageLayout {
 
 export const LAYOUT: { [id: string]: StageLayout } = {
   "dance-single": new StageLayout("dance-single", [
-    { x: -1, y: 0 },
-    { x: 0, y: -1 },
-    { x: 0, y: 1 },
-    { x: 1, y: 0 },
+    { x: 0, y: 1 }, // Left
+    { x: 1, y: 0 }, // Down
+    { x: 1, y: 2 }, // Up
+    { x: 2, y: 1 }, // Right
   ]),
   "dance-double": new StageLayout("dance-double", [
-    { x: -1, y: 0 },
-    { x: -0.7, y: -1 },
-    { x: -0.7, y: 1 },
-    { x: -0.2, y: 0 },
+    { x: 0, y: 1 }, // P1 Left
+    { x: 1, y: 0 }, // P1 Down
+    { x: 1, y: 2 }, // P1 Up
+    { x: 2, y: 1 }, // P1 Right
 
-    { x: 0.2, y: 0 },
-    { x: 0.7, y: -1 },
-    { x: 0.7, y: 1 },
-    { x: 1, y: 0 },
+    { x: 3, y: 1 }, // P2 Left
+    { x: 4, y: 0 }, // P2 Down
+    { x: 4, y: 2 }, // P2 Up
+    { x: 5, y: 1 }, // P2 Right
   ]),
 }

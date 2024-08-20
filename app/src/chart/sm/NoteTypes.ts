@@ -39,6 +39,7 @@ interface ExtraNotedata {
     hasHit: boolean
   }
   parity?: string
+  tech?: string
   parityOverride?: boolean
 }
 

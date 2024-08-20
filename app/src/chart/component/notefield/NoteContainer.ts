@@ -1,4 +1,4 @@
-import { Container, Sprite, Texture } from "pixi.js"
+import { BitmapText, Container, Sprite, Texture } from "pixi.js"
 import { rgbtoHex } from "../../../util/Color"
 import { EventHandler } from "../../../util/EventHandler"
 import { Options } from "../../../util/Options"
@@ -59,6 +59,7 @@ export class NoteContainer extends Container {
       this.notesDirty = false
     }
 
+    let lastBeat = -10000
     for (const note of notedata) {
       if (note.beat > toBeat) break
       if (!this.shouldDisplayNote(note, fromBeat, toBeat)) continue
@@ -99,6 +100,21 @@ export class NoteContainer extends Container {
         container.parityOverride = parityOverride
         this.arrowMap.set(note, container)
         container.addChild(object, selection, parity, parityOverride)
+        if (note.beat != lastBeat) {
+          lastBeat = note.beat
+          const techCountText = new BitmapText(note.tech ?? "", {
+            fontName: "Main",
+            fontSize: 24,
+          })
+
+          const maxX = this.notefield.getColumnX(
+            this.notefield.gameType.numCols - 1
+          )
+          techCountText.x = maxX - container.x + 100
+          techCountText.y = objectBounds.y + 16
+          container.addChild(techCountText)
+        }
+
         this.addChild(container)
       }
     }

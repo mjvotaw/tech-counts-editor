@@ -19,7 +19,7 @@ export class ParityCostCalculator {
     DISTANCE: 6,
     SPIN: 1000,
     SIDESWITCH: 130,
-    BADBRACKET: 40,
+    CROWDED_BRACKET: 40,
     OTHER: 500,
   }
 
@@ -71,108 +71,25 @@ export class ParityCostCalculator {
 
     // Mine weighting
 
-    for (let i = 0; i < combinedColumns.length; i++) {
-      if (combinedColumns[i] != Foot.NONE && row.mines[i] !== undefined) {
-        costs["MINE"] += this.WEIGHTS.MINE
-        break
-      }
-    }
+    costs["MINE"] = this.calcMineCosts(combinedColumns, row)
 
-    for (let c = 0; c < row.holds.length; c++) {
-      if (row.holds[c] === undefined) continue
-      if (
-        ((combinedColumns[c] == Foot.LEFT_HEEL ||
-          combinedColumns[c] == Foot.LEFT_TOE) &&
-          initialState.combinedColumns[c] != Foot.LEFT_TOE &&
-          initialState.combinedColumns[c] != Foot.LEFT_HEEL) ||
-        ((combinedColumns[c] == Foot.RIGHT_HEEL ||
-          combinedColumns[c] == Foot.RIGHT_TOE) &&
-          initialState.combinedColumns[c] != Foot.RIGHT_TOE &&
-          initialState.combinedColumns[c] != Foot.RIGHT_HEEL)
-      ) {
-        const previousFoot = initialState.combinedColumns.indexOf(
-          combinedColumns[c]
-        )
-        const tempcost =
-          this.WEIGHTS.HOLDSWITCH *
-          (previousFoot == -1
-            ? 1
-            : Math.sqrt(this.layout.getDistanceSq(c, previousFoot)))
-        costs["HOLDSWITCH"] += tempcost
-      }
-    }
+    costs["HOLDSWITCH"] = this.calcHoldSwitchCosts(
+      initialState,
+      combinedColumns,
+      row
+    )
 
-    // Small penalty for trying to jack a bracket during a hold
-    if (resultPlacement.leftBracket) {
-      let jackPenalty = 1
-      if (
-        initialState.movedFeet.has(Foot.LEFT_HEEL) ||
-        initialState.movedFeet.has(Foot.LEFT_TOE)
-      )
-        jackPenalty = 1 / elapsedTime
-      if (
-        row.holds[resultPlacement.leftHeel] !== undefined &&
-        row.holds[resultPlacement.leftToe] === undefined
-      ) {
-        costs["BRACKETTAP"] += this.WEIGHTS.BRACKETTAP * jackPenalty
-      }
-      if (
-        row.holds[resultPlacement.leftToe] !== undefined &&
-        row.holds[resultPlacement.leftHeel] === undefined
-      ) {
-        costs["BRACKETTAP"] += this.WEIGHTS.BRACKETTAP * jackPenalty
-      }
-    }
+    costs["BRACKETTAP"] = this.calcBracketTapCost(
+      initialState,
+      row,
+      resultPlacement,
+      elapsedTime
+    )
 
-    if (resultPlacement.rightBracket) {
-      let jackPenalty = 1
-      if (
-        initialState.movedFeet.has(Foot.RIGHT_TOE) ||
-        initialState.movedFeet.has(Foot.RIGHT_HEEL)
-      )
-        jackPenalty = 1 / elapsedTime
-
-      if (
-        row.holds[resultPlacement.rightHeel] !== undefined &&
-        row.holds[resultPlacement.rightToe] === undefined
-      ) {
-        costs["BRACKETTAP"] += this.WEIGHTS.BRACKETTAP * jackPenalty
-      }
-      if (
-        row.holds[resultPlacement.rightToe] !== undefined &&
-        row.holds[resultPlacement.rightHeel] === undefined
-      ) {
-        costs["BRACKETTAP"] += this.WEIGHTS.BRACKETTAP * jackPenalty
-      }
-    }
-
-    // Weighting for moving a foot while the other isn't on the pad (so marked doublesteps are less bad than this)
-    if (initialState.combinedColumns.some(x => x != Foot.NONE)) {
-      for (const f of resultState.movedFeet) {
-        switch (f) {
-          case Foot.LEFT_HEEL:
-          case Foot.LEFT_TOE:
-            if (
-              !(
-                initialState.combinedColumns.includes(Foot.RIGHT_HEEL) ||
-                initialState.combinedColumns.includes(Foot.RIGHT_TOE)
-              )
-            )
-              costs["OTHER"] += this.WEIGHTS.OTHER
-            break
-          case Foot.RIGHT_HEEL:
-          case Foot.RIGHT_TOE:
-            if (
-              !(
-                initialState.combinedColumns.includes(Foot.LEFT_HEEL) ||
-                initialState.combinedColumns.includes(Foot.RIGHT_TOE)
-              )
-            )
-              costs["OTHER"] += this.WEIGHTS.OTHER
-            break
-        }
-      }
-    }
+    costs["OTHER"] = this.calcMovingFootWhileOtherIsntOnPadCost(
+      initialState,
+      resultState
+    )
 
     const movedLeft =
       resultState.movedFeet.has(Foot.LEFT_HEEL) ||
@@ -246,284 +163,79 @@ export class ParityCostCalculator {
 
     // Doublestep weighting doesn't apply if you just did a jump or a jack
 
-    if (
-      movedLeft != movedRight &&
-      (movedLeft || movedRight) &&
-      resultState.holdFeet.size == 0 &&
-      !didJump
-    ) {
-      let doublestepped = false
+    costs["BRACKETJACK"] = this.calcBracketJackCost(
+      resultState,
+      movedLeft,
+      movedRight,
+      didJump,
+      jackedLeft,
+      jackedRight
+    )
+    costs["DOUBLESTEP"] = this.calcDoublestepCost(
+      initialState,
+      resultState,
+      movedLeft,
+      movedRight,
+      didJump,
+      jackedLeft,
+      jackedRight,
+      row,
+      rows,
+      rowIndex
+    )
 
-      if (
-        movedLeft &&
-        !jackedLeft &&
-        ((initialState.movedFeet.has(Foot.LEFT_HEEL) &&
-          !initialState.holdFeet.has(Foot.LEFT_HEEL)) ||
-          (initialState.movedFeet.has(Foot.LEFT_TOE) &&
-            !initialState.holdFeet.has(Foot.LEFT_TOE)))
-      ) {
-        doublestepped = true
-      }
-      if (
-        movedRight &&
-        !jackedRight &&
-        ((initialState.movedFeet.has(Foot.RIGHT_HEEL) &&
-          !initialState.holdFeet.has(Foot.RIGHT_HEEL)) ||
-          (initialState.movedFeet.has(Foot.RIGHT_TOE) &&
-            !initialState.holdFeet.has(Foot.RIGHT_TOE)))
-      )
-        doublestepped = true
-
-      const lastRow = rows[rowIndex - 1]
-      if (lastRow !== undefined) {
-        for (const hold of lastRow.holds) {
-          if (hold === undefined) continue
-          const endBeat = row.beat
-          const startBeat = lastRow.beat
-
-          // if a hold tail extends past the last row & ends in between, we can doublestep
-          if (
-            hold.beat + hold.hold > startBeat &&
-            hold.beat + hold.hold < endBeat
-          )
-            doublestepped = false
-          // if the hold tail extends past this row, we can doublestep
-          if (hold.beat + hold.hold >= endBeat) doublestepped = false
-        }
-      }
-
-      // Jack detection is wrong, it's detecting a jack even if another foot moved after it
-      /*if ((jackedLeft || jackedRight) && row_distance <= 12) {
-          if (DoLogging||true) Console.WriteLine("[{0}->{1}] Penalty of 1000 for a fast jack given to {2} -> {3} with distance {4}", a.row, b.row, Stringify(a.panels), Stringify(newMovement.placement.panels), row_distance);
-          newMovement.weighting += 1000;
-        }*/
-
-      if (doublestepped) {
-        costs["DOUBLESTEP"] += this.WEIGHTS.DOUBLESTEP
-      }
-
-      if (
-        jackedLeft &&
-        resultState.movedFeet.has(Foot.LEFT_HEEL) &&
-        resultState.movedFeet.has(Foot.LEFT_TOE)
-      ) {
-        costs["BRACKETJACK"] += this.WEIGHTS.BRACKETJACK
-      }
-
-      if (
-        jackedRight &&
-        resultState.movedFeet.has(Foot.RIGHT_HEEL) &&
-        resultState.movedFeet.has(Foot.RIGHT_TOE)
-      ) {
-        costs["BRACKETJACK"] += this.WEIGHTS.BRACKETJACK
-      }
-    }
-
-    if (
-      movedLeft &&
-      movedRight &&
-      row.notes.filter(note => note !== undefined).length >= 2
-    ) {
-      costs["JUMP"] += this.WEIGHTS.JUMP / elapsedTime
-    }
+    costs["JUMP"] = this.calcJumpCost(row, movedLeft, movedRight, elapsedTime)
 
     if (combinedPlacement.leftToe == -1)
       combinedPlacement.leftToe = combinedPlacement.leftHeel
     if (combinedPlacement.rightToe == -1)
       combinedPlacement.rightToe = combinedPlacement.rightHeel
 
-    // facing backwards gives a bit of bad weight (scaled heavily the further back you angle, so crossovers aren't Too bad; less bad than doublesteps)
-    const heelFacing =
-      combinedPlacement.leftHeel != -1 && combinedPlacement.rightHeel != -1
-        ? this.layout.getXDifference(
-            combinedPlacement.leftHeel,
-            combinedPlacement.rightHeel
-          )
-        : 0
-    const toeFacing =
-      combinedPlacement.leftToe != -1 && combinedPlacement.rightToe != -1
-        ? this.layout.getXDifference(
-            combinedPlacement.leftToe,
-            combinedPlacement.rightToe
-          )
-        : 0
-    const leftFacing =
-      combinedPlacement.leftHeel != -1 && combinedPlacement.leftToe != -1
-        ? this.layout.getYDifference(
-            combinedPlacement.leftHeel,
-            combinedPlacement.leftToe
-          )
-        : 0
-    const rightFacing =
-      combinedPlacement.rightHeel != -1 && combinedPlacement.rightToe != -1
-        ? this.layout.getYDifference(
-            combinedPlacement.rightHeel,
-            combinedPlacement.rightToe
-          )
-        : 0
-    const heelFacingPenalty = Math.pow(-Math.min(heelFacing, 0), 1.8) * 100
-    const toesFacingPenalty = Math.pow(-Math.min(toeFacing, 0), 1.8) * 100
-    const leftFacingPenalty = Math.pow(-Math.min(leftFacing, 0), 1.8) * 100
-    const rightFacingPenalty = Math.pow(-Math.min(rightFacing, 0), 1.8) * 100
+    costs["FACING"] = this.calcFacingCost(combinedPlacement)
 
-    if (heelFacingPenalty > 0)
-      costs["FACING"] += heelFacingPenalty * this.WEIGHTS.FACING
-    if (toesFacingPenalty > 0)
-      costs["FACING"] += toesFacingPenalty * this.WEIGHTS.FACING
-    if (leftFacingPenalty > 0)
-      costs["FACING"] += leftFacingPenalty * this.WEIGHTS.FACING
-    if (rightFacingPenalty > 0)
-      costs["FACING"] += rightFacingPenalty * this.WEIGHTS.FACING
+    costs["SPIN"] = this.calcSpinCost(initialState, combinedPlacement)
 
-    // spin
-    const previousLeftPos = this.layout.averagePoint(
-      initialState.combinedColumns.indexOf(Foot.LEFT_HEEL),
-      initialState.combinedColumns.indexOf(Foot.LEFT_TOE)
-    )
-    const previousRightPos = this.layout.averagePoint(
-      initialState.combinedColumns.indexOf(Foot.RIGHT_HEEL),
-      initialState.combinedColumns.indexOf(Foot.RIGHT_TOE)
-    )
-    const leftPos = this.layout.averagePoint(
-      combinedPlacement.leftHeel,
-      combinedPlacement.leftToe
-    )
-    const rightPos = this.layout.averagePoint(
-      combinedPlacement.rightHeel,
-      combinedPlacement.rightToe
+    costs["FOOTSWITCH"] = this.calcFootswitchCost(
+      initialState,
+      resultState,
+      combinedColumns,
+      row,
+      elapsedTime
     )
 
-    if (
-      rightPos.x < leftPos.x &&
-      previousRightPos.x < previousLeftPos.x &&
-      rightPos.y < leftPos.y &&
-      previousRightPos.y > previousLeftPos.y
-    ) {
-      costs["SPIN"] += this.WEIGHTS.SPIN
-    }
-    if (
-      rightPos.x < leftPos.x &&
-      previousRightPos.x < previousLeftPos.x &&
-      rightPos.y > leftPos.y &&
-      previousRightPos.y < previousLeftPos.y
-    ) {
-      costs["SPIN"] += this.WEIGHTS.SPIN
-    }
-
-    // if (
-    //   leftPos.y < rightPos.y &&
-    //   previousLeftPos.y < previousRightPos.y &&
-    //   rightPos.x > leftPos.x &&
-    //   previousRightPos.x < previousLeftPos.x
-    // ) {
-    //   costs["SPIN"] += this.WEIGHTS.SPIN
-    // }
-
-    // Footswitch penalty
-
-    // ignore footswitch with 24 or less distance (8th note); penalise slower footswitches based on distance
-    if (elapsedTime >= 0.25) {
-      // footswitching has no penalty if there's a mine nearby
-      if (
-        !row.mines.some(x => x !== undefined) &&
-        !row.fakeMines.some(x => x !== undefined)
-      ) {
-        const timeScaled = elapsedTime - 0.25
-
-        for (let i = 0; i < combinedColumns.length; i++) {
-          if (
-            initialState.combinedColumns[i] == Foot.NONE ||
-            resultState.columns[i] == Foot.NONE
-          )
-            continue
-
-          if (
-            initialState.combinedColumns[i] != resultState.columns[i] &&
-            !resultState.movedFeet.has(initialState.combinedColumns[i])
-          ) {
-            costs["FOOTSWITCH"] +=
-              Math.pow(timeScaled / 2.0, 2) * this.WEIGHTS.FOOTSWITCH
-            break
-          }
-        }
-      }
-    }
-
-    if (
-      initialState.combinedColumns[0] != resultState.columns[0] &&
-      resultState.columns[0] != Foot.NONE &&
-      initialState.combinedColumns[0] != Foot.NONE &&
-      !resultState.movedFeet.has(initialState.combinedColumns[0])
-    ) {
-      costs["SIDESWITCH"] += this.WEIGHTS.SIDESWITCH
-    }
-
-    if (
-      initialState.combinedColumns[3] != resultState.columns[3] &&
-      resultState.columns[3] != Foot.NONE &&
-      initialState.combinedColumns[3] != Foot.NONE &&
-      !resultState.movedFeet.has(initialState.combinedColumns[3])
-    ) {
-      costs["SIDESWITCH"] += this.WEIGHTS.SIDESWITCH
-    }
+    costs["SIDESWITCH"] = this.calcSideswitchCost(initialState, resultState)
 
     // add penalty if jacked
 
-    if (
-      (jackedLeft || jackedRight) &&
-      (row.mines.some(x => x !== undefined) ||
-        row.fakeMines.some(x => x !== undefined))
-    ) {
-      costs["MISSED_FOOTSWITCH"] += this.WEIGHTS.MISSED_FOOTSWITCH
-    }
+    costs["MISSED_FOOTSWITCH"] = this.calcMissedFootswitchCost(
+      jackedLeft,
+      jackedRight,
+      row
+    )
 
     // To do: small weighting for swapping heel with toe or toe with heel (both add up)
 
     // To do: huge weighting for having foot direction opposite of eachother (can't twist one leg 180 degrees)
 
-    // weighting for jacking two notes too close to eachother
-    if (elapsedTime < 0.1 && movedLeft != movedRight) {
-      const timeScaled = 0.1 - elapsedTime
-      if (jackedLeft || jackedRight) {
-        costs["JACK"] += (1 / timeScaled - 1 / 0.1) * this.WEIGHTS.JACK
-      }
-    }
+    costs["JACK"] = this.calcJackCost(
+      jackedLeft,
+      jackedRight,
+      movedLeft,
+      movedRight,
+      elapsedTime
+    )
 
-    // To do: weighting for moving a foot a far distance in a fast time
-    for (const foot of resultState.movedFeet) {
-      // foot == 0 is NO FOOT, so we shouldn't be calculating anything for that
-      if (foot == Foot.NONE) {
-        continue
-      }
+    costs["DISTANCE"] = this.calcDistanceCost(
+      initialState,
+      resultState,
+      elapsedTime
+    )
 
-      const idxFoot = initialState.combinedColumns.indexOf(foot)
-      if (idxFoot == -1) continue
-      const dist =
-        (Math.sqrt(
-          this.layout.getDistanceSq(idxFoot, resultState.columns.indexOf(foot))
-        ) *
-          this.WEIGHTS.DISTANCE) /
-        elapsedTime
-      costs["DISTANCE"] += dist
-    }
-
-    // TODO: we don't want to bracket things if the other foot is obviously in the way
-
-    // Are we trying to bracket a column that the other foot was just on?
-
-    if (
-      resultPlacement.leftBracket &&
-      this.doesLeftFootOverlapRight(initialPlacement, resultPlacement)
-    ) {
-      costs["BADBRACKET"] += this.WEIGHTS.BADBRACKET / elapsedTime
-    }
-
-    if (
-      resultPlacement.rightBracket &&
-      this.doesRightFootOverlapLeft(initialPlacement, resultPlacement)
-    ) {
-      costs["BADBRACKET"] += this.WEIGHTS.BADBRACKET / elapsedTime
-    }
+    costs["CROWDED_BRACKET"] = this.calcCrowdedBracketCost(
+      initialPlacement,
+      resultPlacement,
+      elapsedTime
+    )
 
     resultState.combinedColumns = combinedColumns
 
@@ -668,5 +380,537 @@ export class ParityCostCalculator {
     }
 
     return placement
+  }
+
+  // breakout all of the function costs
+
+  calcMineCosts(combinedColumns: Foot[], row: Row) {
+    let cost = 0
+    for (let i = 0; i < combinedColumns.length; i++) {
+      if (combinedColumns[i] != Foot.NONE && row.mines[i] !== undefined) {
+        cost += this.WEIGHTS.MINE
+        break
+      }
+    }
+    return cost
+  }
+
+  calcHoldSwitchCosts(initialState: State, combinedColumns: Foot[], row: Row) {
+    let cost = 0
+
+    for (let c = 0; c < row.holds.length; c++) {
+      if (row.holds[c] === undefined) continue
+      if (
+        ((combinedColumns[c] == Foot.LEFT_HEEL ||
+          combinedColumns[c] == Foot.LEFT_TOE) &&
+          initialState.combinedColumns[c] != Foot.LEFT_TOE &&
+          initialState.combinedColumns[c] != Foot.LEFT_HEEL) ||
+        ((combinedColumns[c] == Foot.RIGHT_HEEL ||
+          combinedColumns[c] == Foot.RIGHT_TOE) &&
+          initialState.combinedColumns[c] != Foot.RIGHT_TOE &&
+          initialState.combinedColumns[c] != Foot.RIGHT_HEEL)
+      ) {
+        const previousFoot = initialState.combinedColumns.indexOf(
+          combinedColumns[c]
+        )
+        const tempcost =
+          this.WEIGHTS.HOLDSWITCH *
+          (previousFoot == -1
+            ? 1
+            : Math.sqrt(this.layout.getDistanceSq(c, previousFoot)))
+        cost += tempcost
+      }
+    }
+
+    return cost
+  }
+
+  calcBracketTapCost(
+    initialState: State,
+    row: Row,
+    resultPlacement: FootPlacement,
+    elapsedTime: number
+  ) {
+    let cost = 0
+
+    // Small penalty for trying to jack a bracket during a hold
+    if (resultPlacement.leftBracket) {
+      let jackPenalty = 1
+      if (
+        initialState.movedFeet.has(Foot.LEFT_HEEL) ||
+        initialState.movedFeet.has(Foot.LEFT_TOE)
+      )
+        jackPenalty = 1 / elapsedTime
+      if (
+        row.holds[resultPlacement.leftHeel] !== undefined &&
+        row.holds[resultPlacement.leftToe] === undefined
+      ) {
+        cost += this.WEIGHTS.BRACKETTAP * jackPenalty
+      }
+      if (
+        row.holds[resultPlacement.leftToe] !== undefined &&
+        row.holds[resultPlacement.leftHeel] === undefined
+      ) {
+        cost += this.WEIGHTS.BRACKETTAP * jackPenalty
+      }
+    }
+
+    if (resultPlacement.rightBracket) {
+      let jackPenalty = 1
+      if (
+        initialState.movedFeet.has(Foot.RIGHT_TOE) ||
+        initialState.movedFeet.has(Foot.RIGHT_HEEL)
+      )
+        jackPenalty = 1 / elapsedTime
+
+      if (
+        row.holds[resultPlacement.rightHeel] !== undefined &&
+        row.holds[resultPlacement.rightToe] === undefined
+      ) {
+        cost += this.WEIGHTS.BRACKETTAP * jackPenalty
+      }
+      if (
+        row.holds[resultPlacement.rightToe] !== undefined &&
+        row.holds[resultPlacement.rightHeel] === undefined
+      ) {
+        cost += this.WEIGHTS.BRACKETTAP * jackPenalty
+      }
+    }
+
+    return cost
+  }
+
+  calcMovingFootWhileOtherIsntOnPadCost(
+    initialState: State,
+    resultState: State
+  ) {
+    let cost = 0
+
+    // Weighting for moving a foot while the other isn't on the pad (so marked doublesteps are less bad than this)
+    if (initialState.combinedColumns.some(x => x != Foot.NONE)) {
+      for (const f of resultState.movedFeet) {
+        switch (f) {
+          case Foot.LEFT_HEEL:
+          case Foot.LEFT_TOE:
+            if (
+              !(
+                initialState.combinedColumns.includes(Foot.RIGHT_HEEL) ||
+                initialState.combinedColumns.includes(Foot.RIGHT_TOE)
+              )
+            )
+              cost += this.WEIGHTS.OTHER
+            break
+          case Foot.RIGHT_HEEL:
+          case Foot.RIGHT_TOE:
+            if (
+              !(
+                initialState.combinedColumns.includes(Foot.LEFT_HEEL) ||
+                initialState.combinedColumns.includes(Foot.LEFT_TOE)
+              )
+            )
+              cost += this.WEIGHTS.OTHER
+            break
+        }
+      }
+    }
+
+    return cost
+  }
+
+  calcBracketJackCost(
+    resultState: State,
+    movedLeft: boolean,
+    movedRight: boolean,
+    didJump: boolean,
+    jackedLeft: boolean,
+    jackedRight: boolean
+  ) {
+    let cost = 0
+    if (
+      movedLeft != movedRight &&
+      (movedLeft || movedRight) &&
+      resultState.holdFeet.size == 0 &&
+      !didJump
+    ) {
+      if (
+        jackedLeft &&
+        resultState.movedFeet.has(Foot.LEFT_HEEL) &&
+        resultState.movedFeet.has(Foot.LEFT_TOE)
+      ) {
+        cost += this.WEIGHTS.BRACKETJACK
+      }
+
+      if (
+        jackedRight &&
+        resultState.movedFeet.has(Foot.RIGHT_HEEL) &&
+        resultState.movedFeet.has(Foot.RIGHT_TOE)
+      ) {
+        cost += this.WEIGHTS.BRACKETJACK
+      }
+    }
+
+    return cost
+  }
+
+  calcDoublestepCost(
+    initialState: State,
+    resultState: State,
+    movedLeft: boolean,
+    movedRight: boolean,
+    didJump: boolean,
+    jackedLeft: boolean,
+    jackedRight: boolean,
+    row: Row,
+    rows: Row[],
+    rowIndex: number
+  ) {
+    let cost = 0
+
+    if (
+      movedLeft != movedRight &&
+      (movedLeft || movedRight) &&
+      resultState.holdFeet.size == 0 &&
+      !didJump
+    ) {
+      let doublestepped = false
+
+      if (
+        movedLeft &&
+        !jackedLeft &&
+        ((initialState.movedFeet.has(Foot.LEFT_HEEL) &&
+          !initialState.holdFeet.has(Foot.LEFT_HEEL)) ||
+          (initialState.movedFeet.has(Foot.LEFT_TOE) &&
+            !initialState.holdFeet.has(Foot.LEFT_TOE)))
+      ) {
+        doublestepped = true
+      }
+      if (
+        movedRight &&
+        !jackedRight &&
+        ((initialState.movedFeet.has(Foot.RIGHT_HEEL) &&
+          !initialState.holdFeet.has(Foot.RIGHT_HEEL)) ||
+          (initialState.movedFeet.has(Foot.RIGHT_TOE) &&
+            !initialState.holdFeet.has(Foot.RIGHT_TOE)))
+      )
+        doublestepped = true
+
+      const lastRow = rows[rowIndex - 1]
+      if (lastRow !== undefined) {
+        for (const hold of lastRow.holds) {
+          if (hold === undefined) continue
+          const endBeat = row.beat
+          const startBeat = lastRow.beat
+
+          // if a hold tail extends past the last row & ends in between, we can doublestep
+          if (
+            hold.beat + hold.hold > startBeat &&
+            hold.beat + hold.hold < endBeat
+          )
+            doublestepped = false
+          // if the hold tail extends past this row, we can doublestep
+          if (hold.beat + hold.hold >= endBeat) doublestepped = false
+        }
+      }
+
+      // Jack detection is wrong, it's detecting a jack even if another foot moved after it
+      /*if ((jackedLeft || jackedRight) && row_distance <= 12) {
+          if (DoLogging||true) Console.WriteLine("[{0}->{1}] Penalty of 1000 for a fast jack given to {2} -> {3} with distance {4}", a.row, b.row, Stringify(a.panels), Stringify(newMovement.placement.panels), row_distance);
+          newMovement.weighting += 1000;
+        }*/
+
+      if (doublestepped) {
+        cost += this.WEIGHTS.DOUBLESTEP
+      }
+    }
+
+    return cost
+  }
+
+  calcJumpCost(
+    row: Row,
+    movedLeft: boolean,
+    movedRight: boolean,
+    elapsedTime: number
+  ) {
+    let cost = 0
+
+    if (
+      movedLeft &&
+      movedRight &&
+      row.notes.filter(note => note !== undefined).length >= 2
+    ) {
+      cost += this.WEIGHTS.JUMP / elapsedTime
+    }
+
+    return cost
+  }
+
+  calcFacingCost(combinedPlacement: FootPlacement) {
+    let cost = 0
+
+    // facing backwards gives a bit of bad weight (scaled heavily the further back you angle, so crossovers aren't Too bad; less bad than doublesteps)
+    const heelFacing =
+      combinedPlacement.leftHeel != -1 && combinedPlacement.rightHeel != -1
+        ? this.layout.getXDifference(
+            combinedPlacement.leftHeel,
+            combinedPlacement.rightHeel
+          )
+        : 0
+    const toeFacing =
+      combinedPlacement.leftToe != -1 && combinedPlacement.rightToe != -1
+        ? this.layout.getXDifference(
+            combinedPlacement.leftToe,
+            combinedPlacement.rightToe
+          )
+        : 0
+    const leftFacing =
+      combinedPlacement.leftHeel != -1 && combinedPlacement.leftToe != -1
+        ? this.layout.getYDifference(
+            combinedPlacement.leftHeel,
+            combinedPlacement.leftToe
+          )
+        : 0
+    const rightFacing =
+      combinedPlacement.rightHeel != -1 && combinedPlacement.rightToe != -1
+        ? this.layout.getYDifference(
+            combinedPlacement.rightHeel,
+            combinedPlacement.rightToe
+          )
+        : 0
+    const heelFacingPenalty = Math.pow(-Math.min(heelFacing, 0), 1.8) * 100
+    const toesFacingPenalty = Math.pow(-Math.min(toeFacing, 0), 1.8) * 100
+    const leftFacingPenalty = Math.pow(-Math.min(leftFacing, 0), 1.8) * 100
+    const rightFacingPenalty = Math.pow(-Math.min(rightFacing, 0), 1.8) * 100
+
+    if (heelFacingPenalty > 0) cost += heelFacingPenalty * this.WEIGHTS.FACING
+    if (toesFacingPenalty > 0) cost += toesFacingPenalty * this.WEIGHTS.FACING
+    if (leftFacingPenalty > 0) cost += leftFacingPenalty * this.WEIGHTS.FACING
+    if (rightFacingPenalty > 0) cost += rightFacingPenalty * this.WEIGHTS.FACING
+
+    return cost
+  }
+
+  calcSpinCost(initialState: State, combinedPlacement: FootPlacement) {
+    let cost = 0
+
+    // spin
+    const previousLeftPos = this.layout.averagePoint(
+      initialState.combinedColumns.indexOf(Foot.LEFT_HEEL),
+      initialState.combinedColumns.indexOf(Foot.LEFT_TOE)
+    )
+    const previousRightPos = this.layout.averagePoint(
+      initialState.combinedColumns.indexOf(Foot.RIGHT_HEEL),
+      initialState.combinedColumns.indexOf(Foot.RIGHT_TOE)
+    )
+    const leftPos = this.layout.averagePoint(
+      combinedPlacement.leftHeel,
+      combinedPlacement.leftToe
+    )
+    const rightPos = this.layout.averagePoint(
+      combinedPlacement.rightHeel,
+      combinedPlacement.rightToe
+    )
+
+    if (
+      rightPos.x < leftPos.x &&
+      previousRightPos.x < previousLeftPos.x &&
+      rightPos.y < leftPos.y &&
+      previousRightPos.y > previousLeftPos.y
+    ) {
+      cost += this.WEIGHTS.SPIN
+    }
+    if (
+      rightPos.x < leftPos.x &&
+      previousRightPos.x < previousLeftPos.x &&
+      rightPos.y > leftPos.y &&
+      previousRightPos.y < previousLeftPos.y
+    ) {
+      cost += this.WEIGHTS.SPIN
+    }
+
+    // if (
+    //   leftPos.y < rightPos.y &&
+    //   previousLeftPos.y < previousRightPos.y &&
+    //   rightPos.x > leftPos.x &&
+    //   previousRightPos.x < previousLeftPos.x
+    // ) {
+    //   cost += this.WEIGHTS.SPIN
+    // }
+
+    return cost
+  }
+
+  // Footswitches are harder to do when they get too slow.
+  // Notes with an elapsed time greater than this will incur a penalty
+  // 0.25 = 8th notes at 120 bpm
+  private FootswitchMaxElapsedTime = 0.25
+
+  calcFootswitchCost(
+    initialState: State,
+    resultState: State,
+    combinedColumns: Foot[],
+    row: Row,
+    elapsedTime: number
+  ) {
+    let cost = 0
+
+    // ignore footswitch with 24 or less distance (8th note); penalise slower footswitches based on distance
+    if (elapsedTime >= this.FootswitchMaxElapsedTime) {
+      // footswitching has no penalty if there's a mine nearby
+      if (
+        !row.mines.some(x => x !== undefined) &&
+        !row.fakeMines.some(x => x !== undefined)
+      ) {
+        const timeScaled = elapsedTime - this.FootswitchMaxElapsedTime
+
+        for (let i = 0; i < combinedColumns.length; i++) {
+          if (
+            initialState.combinedColumns[i] == Foot.NONE ||
+            resultState.columns[i] == Foot.NONE
+          )
+            continue
+
+          if (
+            initialState.combinedColumns[i] != resultState.columns[i] &&
+            !resultState.movedFeet.has(initialState.combinedColumns[i])
+          ) {
+            cost += Math.pow(timeScaled / 2.0, 2) * this.WEIGHTS.FOOTSWITCH
+            break
+          }
+        }
+      }
+    }
+
+    return cost
+  }
+
+  calcSideswitchCost(initialState: State, resultState: State) {
+    let cost = 0
+
+    if (
+      initialState.combinedColumns[0] != resultState.columns[0] &&
+      resultState.columns[0] != Foot.NONE &&
+      initialState.combinedColumns[0] != Foot.NONE &&
+      !resultState.movedFeet.has(initialState.combinedColumns[0])
+    ) {
+      cost += this.WEIGHTS.SIDESWITCH
+    }
+
+    if (
+      initialState.combinedColumns[3] != resultState.columns[3] &&
+      resultState.columns[3] != Foot.NONE &&
+      initialState.combinedColumns[3] != Foot.NONE &&
+      !resultState.movedFeet.has(initialState.combinedColumns[3])
+    ) {
+      cost += this.WEIGHTS.SIDESWITCH
+    }
+
+    return cost
+  }
+
+  calcMissedFootswitchCost(
+    jackedLeft: boolean,
+    jackedRight: boolean,
+    row: Row
+  ) {
+    let cost = 0
+
+    if (
+      (jackedLeft || jackedRight) &&
+      (row.mines.some(x => x !== undefined) ||
+        row.fakeMines.some(x => x !== undefined))
+    ) {
+      cost += this.WEIGHTS.MISSED_FOOTSWITCH
+    }
+
+    return cost
+  }
+
+  // Jacks are hard to do the faster they are.
+  // Notes with an elapsed time less than this will incur a penalty
+  // 0.1 = 16th note at 150bpm
+  private JackMaxElapsedTime = 0.1
+
+  calcJackCost(
+    jackedLeft: boolean,
+    jackedRight: boolean,
+    movedLeft: boolean,
+    movedRight: boolean,
+    elapsedTime: number
+  ) {
+    let cost = 0
+    // weighting for jacking two notes too close to eachother
+    if (elapsedTime < this.JackMaxElapsedTime && movedLeft != movedRight) {
+      const timeScaled = this.JackMaxElapsedTime - elapsedTime
+      if (jackedLeft || jackedRight) {
+        cost +=
+          (1 / timeScaled - 1 / this.JackMaxElapsedTime) * this.WEIGHTS.JACK
+      }
+    }
+
+    return cost
+  }
+
+  calcDistanceCost(
+    initialState: State,
+    resultState: State,
+    elapsedTime: number
+  ) {
+    let cost = 0
+
+    // To do: weighting for moving a foot a far distance in a fast time
+    for (const foot of resultState.movedFeet) {
+      // foot == 0 is NO FOOT, so we shouldn't be calculating anything for that
+      if (foot == Foot.NONE) {
+        continue
+      }
+
+      const idxFoot = initialState.combinedColumns.indexOf(foot)
+      if (idxFoot == -1) continue
+      const dist =
+        (Math.sqrt(
+          this.layout.getDistanceSq(idxFoot, resultState.columns.indexOf(foot))
+        ) *
+          this.WEIGHTS.DISTANCE) /
+        elapsedTime
+      cost += dist
+    }
+    return cost
+  }
+
+  calcCrowdedBracketCost(
+    initialPlacement: FootPlacement,
+    resultPlacement: FootPlacement,
+    elapsedTime: number
+  ) {
+    let cost = 0
+
+    // Are we trying to bracket a column that the other foot was just on?
+
+    if (
+      resultPlacement.leftBracket &&
+      this.doesLeftFootOverlapRight(initialPlacement, resultPlacement)
+    ) {
+      cost += this.WEIGHTS.CROWDED_BRACKET / elapsedTime
+    } else if (
+      initialPlacement.leftBracket &&
+      this.doesRightFootOverlapLeft(initialPlacement, resultPlacement)
+    ) {
+      cost += this.WEIGHTS.CROWDED_BRACKET / elapsedTime
+    }
+
+    if (
+      resultPlacement.rightBracket &&
+      this.doesRightFootOverlapLeft(initialPlacement, resultPlacement)
+    ) {
+      cost += this.WEIGHTS.CROWDED_BRACKET / elapsedTime
+    } else if (
+      initialPlacement.rightBracket &&
+      this.doesLeftFootOverlapRight(initialPlacement, resultPlacement)
+    ) {
+      cost += this.WEIGHTS.CROWDED_BRACKET / elapsedTime
+    }
+
+    return cost
   }
 }
