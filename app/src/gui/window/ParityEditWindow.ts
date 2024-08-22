@@ -7,6 +7,7 @@ import { EventHandler } from "../../util/EventHandler"
 import { FileHandler } from "../../util/file-handler/FileHandler"
 import { WebFileHandler } from "../../util/file-handler/WebFileHandler"
 import { Foot } from "../../util/ParityDataTypes"
+import { TECH_COUNTS } from "../../util/ParityGenInternals"
 
 export class ParityEditWindow extends Window {
   app: App
@@ -17,6 +18,7 @@ export class ParityEditWindow extends Window {
   private parityImportContainer?: HTMLDivElement
   private parityImportTextarea?: HTMLTextAreaElement
   private parityDisplayContainer?: HTMLDivElement
+  private techCountsDisplayContainer?: HTMLDivElement
   // private parityWeightsContainer?: HTMLDivElement
 
   private currentWeights: { [key: string]: number }
@@ -65,6 +67,7 @@ export class ParityEditWindow extends Window {
     this.innerContainer.classList.add("padding")
 
     this.addParityDisplay()
+    this.addTechCountsDisplay()
     // this.addWeightEditor()
     this.addParityImport()
     this.addFooterButtons()
@@ -167,6 +170,11 @@ export class ParityEditWindow extends Window {
     return selector
   }
 
+  addTechCountsDisplay() {
+    const container = document.createElement("div")
+    this.techCountsDisplayContainer = container
+    this.innerContainer.appendChild(this.techCountsDisplayContainer)
+  }
   addFooterButtons() {
     const footer = document.createElement("div")
     footer.classList.add("footer")
@@ -305,6 +313,7 @@ export class ParityEditWindow extends Window {
     const beat = this.app.chartManager?.getBeat()
     const parity = window.Parity?.getParityForBeat(beat)
     const overrides = window.Parity?.getBeatOverride(beat)
+    const techCounts = window.Parity?.lastTechCounts ?? []
 
     const optionLabels = [
       "None",
@@ -343,6 +352,17 @@ export class ParityEditWindow extends Window {
         this.parityOverrideSelects[i].value = `${overrides[i]}`
         this.parityOverrideSelects[i].disabled = parity[i] == Foot.NONE
       }
+    }
+
+    const techCountsStringParts: string[] = []
+    for (let i = 0; i < TECH_COUNTS.length; i++) {
+      const tc = techCounts[i] ?? 0
+      techCountsStringParts.push(`${TECH_COUNTS[i]}: ${tc}`)
+    }
+
+    if (this.techCountsDisplayContainer) {
+      this.techCountsDisplayContainer.innerText =
+        techCountsStringParts.join(" ")
     }
   }
 

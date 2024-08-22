@@ -24,6 +24,7 @@ export class ParityGenerator {
   lastGraph?: StepParityGraph
   lastStates?: State[]
   lastParities: Foot[][] = []
+  lastTechCounts: number[] = []
 
   private DEFAULT_WEIGHTS: { [key: string]: number } = {
     DOUBLESTEP: 850,
@@ -84,14 +85,12 @@ clear(): clear parity highlights`)
     const notedata = this.app.chartManager.loadedChart?.getNotedata()
     if (!notedata) return
     this.isAnalyzing = true
-    const { graph, selectedStates, parities } = this.parityGenInternal.analyze(
-      notedata,
-      this.beatOverrides,
-      this.WEIGHTS
-    )
+    const { graph, selectedStates, parities, techCounts } =
+      this.parityGenInternal.analyze(notedata, this.beatOverrides, this.WEIGHTS)
     this.lastGraph = graph
     this.lastStates = selectedStates
     this.lastParities = parities
+    this.lastTechCounts = techCounts
 
     this.isAnalyzing = false
     EventHandler.emit("parityUpdated")

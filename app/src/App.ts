@@ -157,14 +157,14 @@ export class App {
       const embed = document.getElementById("embed") as HTMLDivElement
       embed.appendChild(document.createTextNode("Powered by "))
       const smLink = document.createElement("a")
-      smLink.href = "https://tillvit.github.io/smeditor/"
+      smLink.href = "https://tillvit.github.io/tech-counts-editor/"
       smLink.innerText = "SMEditor"
       smLink.target = "_blank"
       embed.appendChild(smLink)
       if (Flags.url != null) {
         embed.appendChild(document.createTextNode(" | Open this chart in a "))
         const newLink = document.createElement("a")
-        const url = new URL(location.origin + "/smeditor/app/")
+        const url = new URL(location.origin + "/tech-counts-editor/app/")
         newLink.innerText = "new tab"
         newLink.target = "_blank"
         url.searchParams.append("url", Flags.url)
@@ -383,7 +383,7 @@ export class App {
     let os = "win"
     if (navigator.userAgent.includes("Mac")) os = "mac"
     else if (navigator.userAgent.includes("Linux")) os = "linux"
-    fetch("/smeditor/assets/app/versions.json")
+    fetch("/tech-counts-editor/assets/app/versions.json")
       .then(data => data.json())
       .then((versions: Version[]) => {
         versions = versions.sort((a, b) => {

@@ -50,7 +50,7 @@ export const FEET_LABEL_TO_FOOT: { [key: string]: Foot } = {
   r: Foot.RIGHT_TOE,
 }
 
-enum TechCountsCategory {
+export enum TechCountsCategory {
   Crossovers = 0,
   Footswitches,
   Sideswitches,
@@ -61,9 +61,9 @@ enum TechCountsCategory {
   Invalid,
 }
 
-const JACK_CUTOFF = 0.176
+export const TECH_COUNTS = ["XO", "FS", "SS", "JA", "BR", "DS"]
 
-const TECH_COUNTS = ["XO", "FS", "SS", "JA", "BR", "DS"]
+const JACK_CUTOFF = 0.176
 
 export class ParityGenInternal {
   costCalculator: ParityCostCalculator
@@ -80,7 +80,12 @@ export class ParityGenInternal {
     notedata: Notedata,
     beatOverrides: BeatOverrides | undefined,
     weights: { [key: string]: number }
-  ): { graph: StepParityGraph; selectedStates: State[]; parities: Foot[][] } {
+  ): {
+    graph: StepParityGraph
+    selectedStates: State[]
+    parities: Foot[][]
+    techCounts: number[]
+  } {
     this.costCalculator.setWeights(weights)
 
     const rows = this.createRows(notedata)
@@ -93,9 +98,9 @@ export class ParityGenInternal {
     const selectedStates = this.selectStatesForRows(graph, rows.length)
     const parities = selectedStates.map(s => s.columns)
     this.setNoteParity(rows, parities, beatOverrides)
-    this.calculateTechCounts(rows, this.layout.columnCount)
+    const techCounts = this.calculateTechCounts(rows, this.layout.columnCount)
 
-    return { graph, selectedStates, parities }
+    return { graph, selectedStates, parities, techCounts }
   }
 
   calculatePermuteColumnKey(row: Row): number {
@@ -554,8 +559,6 @@ export class ParityGenInternal {
         }
       }
 
-      console.log("currentFootPlacement: ", currentFootPlacement)
-
       /*
       Jacks are same arrow same foot
       Doublestep is same foot on successive arrows
@@ -671,6 +674,8 @@ export class ParityGenInternal {
     for (let t = 0; t < TECH_COUNTS.length; t++) {
       console.log(`${TECH_COUNTS[t]}: ${techCounts[t]}`)
     }
+
+    return techCounts
   }
 }
 
