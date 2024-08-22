@@ -25,6 +25,7 @@ export const parityColors: Record<string, number> = {
 export class NoteContainer extends Container {
   private readonly notefield: Notefield
   private arrowMap: Map<NotedataEntry, HighlightedNoteObject> = new Map()
+  private techMap: Map<NotedataEntry, BitmapText> = new Map()
   private notesDirty = false
   readonly children: HighlightedNoteObject[] = []
 
@@ -35,15 +36,18 @@ export class NoteContainer extends Container {
 
     const timeSig = () => {
       this.arrowMap.clear()
+      this.techMap.clear()
       this.removeChildren()
     }
     const purgeNotes = () => (this.notesDirty = true)
 
     EventHandler.on("timeSigChanged", timeSig)
     EventHandler.on("chartModified", purgeNotes)
+    EventHandler.on("parityUpdated", purgeNotes)
     this.on("destroyed", () => {
       EventHandler.off("timeSigChanged", timeSig)
-      EventHandler.on("chartModified", purgeNotes)
+      EventHandler.off("chartModified", purgeNotes)
+      EventHandler.off("parityUpdated", purgeNotes)
     })
   }
 
@@ -55,6 +59,10 @@ export class NoteContainer extends Container {
           container.destroy()
           this.arrowMap.delete(note)
         }
+      }
+      for (const [note, text] of this.techMap.entries()) {
+        text.destroy()
+        this.techMap.delete(note)
       }
       this.notesDirty = false
     }
@@ -100,7 +108,13 @@ export class NoteContainer extends Container {
         container.parityOverride = parityOverride
         this.arrowMap.set(note, container)
         container.addChild(object, selection, parity, parityOverride)
-        if (note.beat != lastBeat) {
+
+        this.addChild(container)
+      }
+
+      if (note.beat != lastBeat && !this.techMap.has(note)) {
+        const container = this.arrowMap.get(note)
+        if (container != undefined) {
           lastBeat = note.beat
           const techCountText = new BitmapText(note.tech ?? "", {
             fontName: "Main",
@@ -111,11 +125,11 @@ export class NoteContainer extends Container {
             this.notefield.gameType.numCols - 1
           )
           techCountText.x = maxX - container.x + 100
-          techCountText.y = objectBounds.y + 16
+          techCountText.y = -16
           container.addChild(techCountText)
-        }
 
-        this.addChild(container)
+          this.techMap.set(note, techCountText)
+        }
       }
     }
 

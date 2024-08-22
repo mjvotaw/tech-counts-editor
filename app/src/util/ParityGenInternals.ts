@@ -61,6 +61,8 @@ enum TechCountsCategory {
   Invalid,
 }
 
+const JACK_CUTOFF = 0.176
+
 const TECH_COUNTS = ["XO", "FS", "SS", "JA", "BR", "DS"]
 
 export class ParityGenInternal {
@@ -509,7 +511,7 @@ export class ParityGenInternal {
     const previousFootPlacement: number[] = []
     const currentFootPlacement: number[] = []
     const techCounts: number[] = []
-
+    let previousNoteCount = 0
     for (let t = 0; t < 6; t++) {
       techCounts.push(0)
     }
@@ -527,7 +529,8 @@ export class ParityGenInternal {
       currentColumns.push(Foot.NONE)
     }
 
-    for (const currentRow of rows) {
+    for (let r = 1; r < rows.length; r++) {
+      const currentRow = rows[r]
       let noteCount: number = 0
       const techs: string[] = []
 
@@ -564,7 +567,7 @@ export class ParityGenInternal {
       */
 
       // check for jacks and doublesteps
-      if (noteCount == 1) {
+      if (noteCount == 1 && previousNoteCount == 1) {
         for (const foot of FEET) {
           if (
             currentFootPlacement[foot] == -1 ||
@@ -574,8 +577,10 @@ export class ParityGenInternal {
           }
 
           if (previousFootPlacement[foot] == currentFootPlacement[foot]) {
-            techs.push(TECH_COUNTS[TechCountsCategory.Jacks])
-            techCounts[TechCountsCategory.Jacks] += 1
+            if (currentRow.second - rows[r - 1].second < JACK_CUTOFF) {
+              techs.push(TECH_COUNTS[TechCountsCategory.Jacks])
+              techCounts[TechCountsCategory.Jacks] += 1
+            }
           } else {
             techs.push(TECH_COUNTS[TechCountsCategory.Doublesteps])
             techCounts[TechCountsCategory.Doublesteps] += 1
@@ -659,6 +664,7 @@ export class ParityGenInternal {
         previousColumns[c] = currentColumns[c]
         currentColumns[c] = Foot.NONE
       }
+      previousNoteCount = noteCount
     }
 
     console.log("TECH COUNTS:")
