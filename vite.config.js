@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: "/smeditor",
+  base: "/tech-counts-editor",
   appType: "mpa",
   plugins: [
     VitePWA({
@@ -13,7 +13,7 @@ export default defineConfig({
       manifest: {
         short_name: "SMEditor",
         name: "SMEditor",
-        start_url: "/smeditor/app",
+        start_url: "/tech-counts-editor/app",
         display: "standalone",
         theme_color: "#18191c",
         background_color: "#18191c",
