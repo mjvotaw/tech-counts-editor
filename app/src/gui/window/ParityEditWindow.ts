@@ -1,5 +1,5 @@
 import { App } from "../../App"
-import { NumberSpinner } from "../element/NumberSpinner"
+// import { NumberSpinner } from "../element/NumberSpinner"
 import { WaterfallManager } from "../element/WaterfallManager"
 import { Window } from "./Window"
 import { basename, dirname } from "../../util/Path"
@@ -17,10 +17,10 @@ export class ParityEditWindow extends Window {
   private parityImportContainer?: HTMLDivElement
   private parityImportTextarea?: HTMLTextAreaElement
   private parityDisplayContainer?: HTMLDivElement
-  private parityWeightsContainer?: HTMLDivElement
+  // private parityWeightsContainer?: HTMLDivElement
 
   private currentWeights: { [key: string]: number }
-  private numberFields: { [key: string]: NumberSpinner } = {}
+  // private numberFields: { [key: string]: NumberSpinner } = {}
 
   constructor(app: App) {
     const posLeft = Math.min(
@@ -65,7 +65,7 @@ export class ParityEditWindow extends Window {
     this.innerContainer.classList.add("padding")
 
     this.addParityDisplay()
-    this.addWeightEditor()
+    // this.addWeightEditor()
     this.addParityImport()
     this.addFooterButtons()
 
@@ -134,8 +134,8 @@ export class ParityEditWindow extends Window {
     container.appendChild(overrideLabel)
     container.appendChild(overridesContainer)
 
-    this.innerContainer.appendChild(container)
     this.parityDisplayContainer = container
+    this.innerContainer.appendChild(this.parityDisplayContainer)
   }
 
   createParitySelector(): HTMLSelectElement {
@@ -247,31 +247,31 @@ export class ParityEditWindow extends Window {
     this.innerContainer.appendChild(importContainer)
   }
 
-  addWeightEditor() {
-    const weightContainer = document.createElement("div")
-    weightContainer.classList.add("parity-weights-container", "hidden")
+  // addWeightEditor() {
+  //   const weightContainer = document.createElement("div")
+  //   weightContainer.classList.add("parity-weights-container", "hidden")
 
-    const weightKeys = Object.keys(this.currentWeights)
-    weightKeys.forEach(title => {
-      const weightLine = document.createElement("div")
-      weightLine.classList.add("parity-weight")
-      const label = document.createElement("div")
-      label.classList.add("label")
-      label.innerText = title
+  //   const weightKeys = Object.keys(this.currentWeights)
+  //   weightKeys.forEach(title => {
+  //     const weightLine = document.createElement("div")
+  //     weightLine.classList.add("parity-weight")
+  //     const label = document.createElement("div")
+  //     label.classList.add("label")
+  //     label.innerText = title
 
-      const item = NumberSpinner.create(this.currentWeights[title], 10, 0)
-      item.onChange = value => {
-        this.currentWeights[title] = value || this.currentWeights[title]
-        this.updateParityWeights()
-      }
-      weightLine.appendChild(label)
-      weightLine.appendChild(item.view)
-      weightContainer.appendChild(weightLine)
-      this.numberFields[title] = item
-    })
-    this.parityWeightsContainer = weightContainer
-    this.innerContainer.appendChild(weightContainer)
-  }
+  //     const item = NumberSpinner.create(this.currentWeights[title], 10, 0)
+  //     item.onChange = value => {
+  //       this.currentWeights[title] = value || this.currentWeights[title]
+  //       this.updateParityWeights()
+  //     }
+  //     weightLine.appendChild(label)
+  //     weightLine.appendChild(item.view)
+  //     weightContainer.appendChild(weightLine)
+  //     this.numberFields[title] = item
+  //   })
+  //   this.parityWeightsContainer = weightContainer
+  //   this.innerContainer.appendChild(weightContainer)
+  // }
   // Event handling
 
   setupEventHandlers() {

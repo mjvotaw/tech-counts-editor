@@ -14,13 +14,13 @@ export class MenubarManager {
   constructor(app: App, view: HTMLDivElement) {
     this.app = app
     this.view = view
+    this.titleDisplay = document.createElement("div")
+
     if (!Flags.menuBar) return
     const elements: HTMLDivElement[] = Object.values(MENUBAR_DATA).map(value =>
       this.createElement(value)
     )
     view.replaceChildren(...elements)
-
-    this.titleDisplay = document.createElement("div")
 
     this.titleDisplay.classList.add("menu-song-title")
     view.appendChild(this.titleDisplay)
