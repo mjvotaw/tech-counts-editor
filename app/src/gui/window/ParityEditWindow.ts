@@ -362,7 +362,7 @@ export class ParityEditWindow extends Window {
   }
 
   resetParity() {
-    window.Parity?.resetBeatOverrides()
+    window.Parity?.clearState()
     window.Parity?.analyze()
   }
 
