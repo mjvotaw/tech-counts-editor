@@ -51,6 +51,7 @@ import {
 } from "./sm/NoteTypes"
 import { Simfile } from "./sm/Simfile"
 import { Cached, TIMING_EVENT_NAMES, TimingEvent } from "./sm/TimingTypes"
+import { ParityEditWindow } from "../gui/window/ParityEditWindow"
 
 const SNAPS = [1, 2, 3, 4, 6, 8, 12, 16, 24, 48, -1]
 
@@ -700,8 +701,18 @@ export class ChartManager {
 
     EventHandler.emit("smLoaded")
     await this.loadChart()
+    if (this.time == 0) {
+      this.setBeat(0)
+    }
+
     EventHandler.emit("smLoadedAfter")
-    if (this.time == 0) this.setBeat(0)
+
+    // open parity edit window, enable parity, etc
+    window.Parity?.setEnabled(true)
+    window.Parity?.clearState()
+    window.Parity?.analyze()
+    EventHandler.emit("smLoadedAfter")
+    this.app.windowManager.openWindow(new ParityEditWindow(this.app))
 
     RecentFileHandler.addSM(this.smPath, this.loadedSM)
   }

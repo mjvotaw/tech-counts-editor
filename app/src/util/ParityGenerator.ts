@@ -105,6 +105,13 @@ clear(): clear parity highlights`)
     return this.isEnabled
   }
 
+  clearState() {
+    this.lastGraph = undefined
+    this.lastStates = undefined
+    this.lastParities = []
+    this.beatOverrides = new BeatOverrides(this.layout.columnCount)
+  }
+
   //
   // Methods for checking/setting overrides
   //
