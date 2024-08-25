@@ -22,7 +22,7 @@ export class ParityGenerator {
 
   beatOverrides: BeatOverrides
   lastGraph?: StepParityGraph
-  lastStates?: State[]
+  lastSelectedStates?: State[]
   lastParities: Foot[][] = []
   lastTechCounts: number[] = []
 
@@ -40,7 +40,7 @@ export class ParityGenerator {
     DISTANCE: 6,
     SPIN: 1000,
     SIDESWITCH: 130,
-    BADBRACKET: 40,
+    CROWDED_BRACKET: 40,
     OTHER: 0,
   }
 
@@ -58,7 +58,7 @@ export class ParityGenerator {
     DISTANCE: 6,
     SPIN: 1000,
     SIDESWITCH: 130,
-    BADBRACKET: 40,
+    CROWDED_BRACKET: 40,
     OTHER: 0,
   }
 
@@ -88,7 +88,7 @@ clear(): clear parity highlights`)
     const { graph, selectedStates, parities, techCounts } =
       this.parityGenInternal.analyze(notedata, this.beatOverrides, this.WEIGHTS)
     this.lastGraph = graph
-    this.lastStates = selectedStates
+    this.lastSelectedStates = selectedStates
     this.lastParities = parities
     this.lastTechCounts = techCounts
 
@@ -106,7 +106,7 @@ clear(): clear parity highlights`)
 
   clearState() {
     this.lastGraph = undefined
-    this.lastStates = undefined
+    this.lastSelectedStates = undefined
     this.lastParities = []
     this.beatOverrides = new BeatOverrides(this.layout.columnCount)
   }
@@ -151,11 +151,28 @@ clear(): clear parity highlights`)
   // Retrieving various data by beat/row
   //
 
+  getNodesForBeat(beat: number): StepParityNode[] {
+    const nodesForBeat: StepParityNode[] = []
+
+    if (this.lastGraph) {
+      for (const node of this.lastGraph.nodes) {
+        if (Math.abs(node.state.beat - beat) < 0.0001) {
+          nodesForBeat.push(node)
+        }
+        if (node.state.beat > beat) {
+          break
+        }
+      }
+    }
+
+    return nodesForBeat
+  }
+
   getParityForBeat(beat: number): Foot[] | undefined {
-    if (this.lastStates == undefined) {
+    if (this.lastSelectedStates == undefined) {
       return undefined
     }
-    for (const state of this.lastStates) {
+    for (const state of this.lastSelectedStates) {
       if (Math.abs(state.beat - beat) < 0.0001) {
         return state.columns
       }
@@ -167,11 +184,11 @@ clear(): clear parity highlights`)
   }
 
   getNodeForBeat(beat: number): StepParityNode | undefined {
-    if (this.lastGraph == undefined || this.lastStates == undefined) {
+    if (this.lastGraph == undefined || this.lastSelectedStates == undefined) {
       return undefined
     }
 
-    for (const state of this.lastStates) {
+    for (const state of this.lastSelectedStates) {
       if (Math.abs(state.beat - beat) < 0.0001) {
         return this.lastGraph.addOrGetExistingNode(state)
       }

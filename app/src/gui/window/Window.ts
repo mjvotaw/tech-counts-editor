@@ -163,7 +163,7 @@ export abstract class Window {
     this.clampPosition()
   }
 
-  private clampPosition() {
+  protected clampPosition() {
     if (this.windowManager == undefined) return
     const x = parseInt(this.windowElement.style.left.slice(0, -2))
     const y = parseInt(this.windowElement.style.top.slice(0, -2))

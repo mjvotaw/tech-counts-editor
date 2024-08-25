@@ -121,8 +121,8 @@ export class App {
     })
 
     // This is just for using the pixijs chrome plugin
-    // globalThis.__PIXI_STAGE__ = this.stage
-    // globalThis.__PIXI_RENDERER__ = this.renderer
+    globalThis.__PIXI_STAGE__ = this.stage
+    globalThis.__PIXI_RENDERER__ = this.renderer
 
     this.ticker = new Ticker()
     this.ticker.maxFPS = 120

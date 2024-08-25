@@ -31,10 +31,28 @@ export const ZERO_WEIGHT: { [key: string]: number } = {
   DISTANCE: 0,
   SPIN: 0,
   SIDESWITCH: 0,
-  BADBRACKET: 0,
+  CROWDED_BRACKET: 0,
   OTHER: 0,
   OVERRIDE: 0,
   TOTAL: 0,
+}
+
+export const WEIGHT_SHORT_NAMES: { [id: string]: string } = {
+  DOUBLESTEP: "DST",
+  BRACKETJACK: "BRJ",
+  JACK: "JAK",
+  JUMP: "JMP",
+  BRACKETTAP: "BRT",
+  HOLDSWITCH: "HLS",
+  MINE: "MNE",
+  FOOTSWITCH: "FSW",
+  MISSED_FOOTSWITCH: "MFS",
+  FACING: "FAC",
+  DISTANCE: "DIS",
+  SPIN: "SPN",
+  SIDESWITCH: "SSW",
+  CROWDED_BRACKET: "CBK",
+  OTHER: "OTH",
 }
 
 export class State {

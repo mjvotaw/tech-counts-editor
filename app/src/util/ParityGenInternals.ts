@@ -42,7 +42,8 @@ const OTHER_PART_OF_FOOT = [
   Foot.RIGHT_HEEL,
 ]
 
-export const FEET_LABEL = "LlRr"
+export const FEET_LABELS = [".", "L", "l", "R", "r"]
+
 export const FEET_LABEL_TO_FOOT: { [key: string]: Foot } = {
   L: Foot.LEFT_HEEL,
   l: Foot.LEFT_TOE,
@@ -352,7 +353,7 @@ export class ParityGenInternal {
       const parityForRow = parities[i]
       for (let j = 0; j < this.layout.columnCount; j++) {
         if (rows[i].notes[j]) {
-          rows[i].notes[j]!.parity = FEET_LABEL[FEET.indexOf(parityForRow[j])]
+          rows[i].notes[j]!.parity = FEET_LABELS[parityForRow[j]]
           rows[i].notes[j]!.parityOverride =
             beatOverrides && beatOverrides.hasBeatOverride(rows[i].beat)
         }
@@ -534,7 +535,7 @@ export class ParityGenInternal {
       currentColumns.push(Foot.NONE)
     }
 
-    for (let r = 1; r < rows.length; r++) {
+    for (let r = 0; r < rows.length; r++) {
       const currentRow = rows[r]
       let noteCount: number = 0
       const techs: string[] = []
@@ -570,7 +571,7 @@ export class ParityGenInternal {
       */
 
       // check for jacks and doublesteps
-      if (noteCount == 1 && previousNoteCount == 1) {
+      if (r > 0 && noteCount == 1 && previousNoteCount == 1) {
         for (const foot of FEET) {
           if (
             currentFootPlacement[foot] == -1 ||

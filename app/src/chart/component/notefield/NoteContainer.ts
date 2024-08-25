@@ -112,7 +112,12 @@ export class NoteContainer extends Container {
         this.addChild(container)
       }
 
-      if (note.beat != lastBeat && !this.techMap.has(note)) {
+      if (
+        note.beat != lastBeat &&
+        note.tech &&
+        note.tech.length > 0 &&
+        !this.techMap.has(note)
+      ) {
         const container = this.arrowMap.get(note)
         if (container != undefined) {
           lastBeat = note.beat
@@ -136,6 +141,7 @@ export class NoteContainer extends Container {
     for (const [note, container] of this.arrowMap.entries()) {
       if (!this.shouldDisplayNote(note, fromBeat, toBeat)) {
         container.destroy()
+        this.techMap.delete(note)
         this.arrowMap.delete(note)
         continue
       }

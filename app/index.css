@@ -377,6 +377,16 @@ html {
 .navbar img:hover {
   filter: invert(0.35);
 }
+.window-resize-handle {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  right: 0px;
+  bottom: 0px;
+  z-index: 3;
+  background-color: rgb(83, 82, 82);
+  cursor: se-resize;
+}
 button {
   background: rgb(83, 82, 82);
   border: 0.5px solid rgb(35, 34, 34);
@@ -1033,6 +1043,41 @@ div.inlineEdit[contenteditable="true"]:focus {
 
 .parity-weight * {
   flex: 1;
+}
+
+.parity-node-display {
+  width: 100%;
+  overflow-y: auto;
+  flex-grow: 1;
+  margin: 8px 0px;
+  font-family: monospace;
+}
+
+.parity-node-display-item {
+  font-family: monospace;
+  color: #d0d0d0;
+  margin: 2px 0px;
+}
+
+.parity-node-display-item * {
+  font-family: inherit;
+  color: inherit;
+}
+
+.parity-node-display-item-selected {
+  color: #d2ffc7;
+}
+
+.parity-node-cost-item {
+  font-size: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.parity-node-cost-inner-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .receptor-display {

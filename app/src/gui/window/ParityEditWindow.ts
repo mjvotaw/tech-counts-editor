@@ -1,15 +1,15 @@
 import { App } from "../../App"
 // import { NumberSpinner } from "../element/NumberSpinner"
 import { WaterfallManager } from "../element/WaterfallManager"
-import { Window } from "./Window"
+import { ResizableWindow } from "./ResizableWindow"
 import { basename, dirname } from "../../util/Path"
 import { EventHandler } from "../../util/EventHandler"
 import { FileHandler } from "../../util/file-handler/FileHandler"
 import { WebFileHandler } from "../../util/file-handler/WebFileHandler"
-import { Foot } from "../../util/ParityDataTypes"
-import { TECH_COUNTS } from "../../util/ParityGenInternals"
+import { Foot, WEIGHT_SHORT_NAMES } from "../../util/ParityDataTypes"
+import { TECH_COUNTS, FEET_LABELS } from "../../util/ParityGenInternals"
 
-export class ParityEditWindow extends Window {
+export class ParityEditWindow extends ResizableWindow {
   app: App
 
   private innerContainer: HTMLDivElement
@@ -19,6 +19,8 @@ export class ParityEditWindow extends Window {
   private parityImportTextarea?: HTMLTextAreaElement
   private parityDisplayContainer?: HTMLDivElement
   private techCountsDisplayContainer?: HTMLDivElement
+  private nodeDisplayContainer?: HTMLDivElement
+
   // private parityWeightsContainer?: HTMLDivElement
 
   private currentWeights: { [key: string]: number }
@@ -32,7 +34,7 @@ export class ParityEditWindow extends Window {
 
     super({
       title: "Edit Parity Data",
-      width: 370,
+      width: 400,
       height: 420,
       left: posLeft,
       disableClose: false,
@@ -68,6 +70,7 @@ export class ParityEditWindow extends Window {
 
     this.addParityDisplay()
     this.addTechCountsDisplay()
+    this.addNodeDisplay()
     // this.addWeightEditor()
     this.addParityImport()
     this.addFooterButtons()
@@ -170,9 +173,26 @@ export class ParityEditWindow extends Window {
     return selector
   }
 
+  addNodeDisplay() {
+    const container = document.createElement("div")
+
+    container.classList.add("parity-node-display")
+
+    const nodesLabel = document.createElement("div")
+    nodesLabel.innerText = "Nodes:"
+
+    this.innerContainer.appendChild(nodesLabel)
+    this.nodeDisplayContainer = container
+
+    this.innerContainer.appendChild(this.nodeDisplayContainer)
+  }
+
   addTechCountsDisplay() {
     const container = document.createElement("div")
+    const label = document.createElement("div")
+    label.innerText = "Tech Counts:"
     this.techCountsDisplayContainer = container
+    this.innerContainer.appendChild(label)
     this.innerContainer.appendChild(this.techCountsDisplayContainer)
   }
   addFooterButtons() {
@@ -195,26 +215,26 @@ export class ParityEditWindow extends Window {
     }
     footer.appendChild(resetButton)
 
-    const importButton = document.createElement("button")
-    importButton.innerText = "Import Parity Data"
-    importButton.onclick = () => {
-      this.openParityImport()
-    }
-    footer.appendChild(importButton)
+    // const importButton = document.createElement("button")
+    // importButton.innerText = "Import Parity Data"
+    // importButton.onclick = () => {
+    //   this.openParityImport()
+    // }
+    // footer.appendChild(importButton)
 
-    const saveButton = document.createElement("button")
-    saveButton.innerText = "Save Parity Data"
-    saveButton.onclick = () => {
-      this.saveParity()
-    }
-    footer.appendChild(saveButton)
+    // const saveButton = document.createElement("button")
+    // saveButton.innerText = "Save Parity Data"
+    // saveButton.onclick = () => {
+    //   this.saveParity()
+    // }
+    // footer.appendChild(saveButton)
 
-    const saveNodesButton = document.createElement("button")
-    saveNodesButton.innerText = "Save Node Data"
-    saveNodesButton.onclick = () => {
-      this.saveDataForMike()
-    }
-    footer.appendChild(saveNodesButton)
+    // const saveNodesButton = document.createElement("button")
+    // saveNodesButton.innerText = "Save Node Data"
+    // saveNodesButton.onclick = () => {
+    //   this.saveDataForMike()
+    // }
+    // footer.appendChild(saveNodesButton)
 
     this.innerContainer.appendChild(footer)
   }
@@ -314,6 +334,9 @@ export class ParityEditWindow extends Window {
     const parity = window.Parity?.getParityForBeat(beat)
     const overrides = window.Parity?.getBeatOverride(beat)
     const techCounts = window.Parity?.lastTechCounts ?? []
+    const nodes = window.Parity?.getAllNodesForBeat(beat)
+    const selectedStates = window.Parity?.lastSelectedStates ?? []
+    const selectedStateIds = selectedStates.map(s => s.idx)
 
     const optionLabels = [
       "None",
@@ -363,6 +386,67 @@ export class ParityEditWindow extends Window {
     if (this.techCountsDisplayContainer) {
       this.techCountsDisplayContainer.innerText =
         techCountsStringParts.join(" ")
+    }
+
+    const nodeDisplay = this.nodeDisplayContainer
+    if (nodeDisplay) {
+      nodeDisplay.textContent = ""
+
+      nodes.forEach(node => {
+        const isSelected = selectedStateIds.includes(node.state.idx)
+
+        const parityStr = node.state.combinedColumns
+          .map(f => FEET_LABELS[f])
+          .join("")
+
+        const nodeCostDiv = document.createElement("div")
+        nodeCostDiv.classList.add("hidden")
+        let allCosts = 0
+        let costCount = 0
+        for (const [parent_id, cost] of node.ancestors.entries()) {
+          allCosts += cost["TOTAL"]
+          costCount += 1
+          const costElem = document.createElement("div")
+          costElem.classList.add("parity-node-cost-item")
+          const costParentId = document.createElement("div")
+          costParentId.innerText = `${parent_id}:: `
+          costElem.appendChild(costParentId)
+          for (const costName in cost) {
+            if (costName == "OVERRIDE" || costName == "TOTAL") {
+              continue
+            }
+            const shortName = WEIGHT_SHORT_NAMES[costName]
+            const costSpan = document.createElement("div")
+            costSpan.classList.add("parity-node-cost-inner-item")
+            costSpan.setAttribute("title", costName)
+            costSpan.innerHTML = `<div>${shortName}</div><div>${Math.round(
+              cost[costName]
+            )}</div>`
+            costElem.appendChild(costSpan)
+          }
+          nodeCostDiv.appendChild(costElem)
+        }
+
+        const avgCost = Math.round(allCosts / costCount)
+
+        const nodeText = `${node.id}: ${parityStr} Avg cost: ${avgCost}`
+
+        const nodeDiv = document.createElement("div")
+        nodeDiv.classList.add("parity-node-display-item")
+        if (isSelected) {
+          nodeDiv.classList.add("parity-node-display-item-selected")
+        }
+        const nodeTextDiv = document.createElement("div")
+        nodeTextDiv.innerText = nodeText
+
+        nodeTextDiv.addEventListener("click", e => {
+          nodeCostDiv.classList.toggle("hidden")
+        })
+
+        nodeDiv.appendChild(nodeTextDiv)
+        nodeDiv.appendChild(nodeCostDiv)
+        nodeDisplay.appendChild(nodeDiv)
+      })
     }
   }
 
