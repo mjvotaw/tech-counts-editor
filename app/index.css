@@ -1068,10 +1068,19 @@ div.inlineEdit[contenteditable="true"]:focus {
   color: #d2ffc7;
 }
 
+.parity-node-cost-avg {
+  cursor: pointer;
+}
+
 .parity-node-cost-item {
+  color: #d0d0d0;
   font-size: 10px;
   display: flex;
   justify-content: space-between;
+}
+
+.parity-node-cost-item.selected {
+  color: #d2ffc7;
 }
 
 .parity-node-cost-inner-item {

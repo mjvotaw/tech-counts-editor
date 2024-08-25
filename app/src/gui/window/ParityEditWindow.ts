@@ -388,6 +388,8 @@ export class ParityEditWindow extends ResizableWindow {
         techCountsStringParts.join(" ")
     }
 
+    // this is a whole bunch of code for displaying all of the nodes for a given row,
+    // and the weights that make up the costs for each parent node.
     const nodeDisplay = this.nodeDisplayContainer
     if (nodeDisplay) {
       nodeDisplay.textContent = ""
@@ -401,23 +403,30 @@ export class ParityEditWindow extends ResizableWindow {
 
         const nodeCostDiv = document.createElement("div")
         nodeCostDiv.classList.add("hidden")
+
         let allCosts = 0
         let costCount = 0
+
         for (const [parent_id, cost] of node.ancestors.entries()) {
+          const isParentSelected = selectedStateIds.includes(parent_id)
           allCosts += cost["TOTAL"]
           costCount += 1
           const costElem = document.createElement("div")
           costElem.classList.add("parity-node-cost-item")
+          if (isParentSelected) {
+            costElem.classList.add("selected")
+          }
           const costParentId = document.createElement("div")
           costParentId.innerText = `${parent_id}:: `
           costElem.appendChild(costParentId)
           for (const costName in cost) {
-            if (costName == "OVERRIDE" || costName == "TOTAL") {
+            if (costName == "OVERRIDE") {
               continue
             }
             const shortName = WEIGHT_SHORT_NAMES[costName]
             const costSpan = document.createElement("div")
             costSpan.classList.add("parity-node-cost-inner-item")
+
             costSpan.setAttribute("title", costName)
             costSpan.innerHTML = `<div>${shortName}</div><div>${Math.round(
               cost[costName]
@@ -437,6 +446,7 @@ export class ParityEditWindow extends ResizableWindow {
           nodeDiv.classList.add("parity-node-display-item-selected")
         }
         const nodeTextDiv = document.createElement("div")
+        nodeTextDiv.classList.add("parity-node-cost-avg")
         nodeTextDiv.innerText = nodeText
 
         nodeTextDiv.addEventListener("click", e => {

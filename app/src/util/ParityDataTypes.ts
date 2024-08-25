@@ -8,6 +8,16 @@ export enum Foot {
   RIGHT_TOE,
 }
 
+// Instead of having to write out if((someFootPart == Foot.LEFT_TOE && someOtherPart != Foot.LEFT_HEEL || someFootPart == Foot.LEFT_HEEL && someOtherPart != Foot.LEFT_TOE))
+// get the other part of the foot for a given value, if(OTHER_PART_OF_FOOT[someFootPart] != someOtherPart)
+export const OTHER_PART_OF_FOOT = [
+  Foot.NONE,
+  Foot.LEFT_TOE,
+  Foot.LEFT_HEEL,
+  Foot.RIGHT_TOE,
+  Foot.RIGHT_HEEL,
+]
+
 export interface FootPlacement {
   leftHeel: number
   leftToe: number
@@ -53,6 +63,8 @@ export const WEIGHT_SHORT_NAMES: { [id: string]: string } = {
   SIDESWITCH: "SSW",
   CROWDED_BRACKET: "CBK",
   OTHER: "OTH",
+  OVERRIDE: "OVR",
+  TOTAL: "TOT",
 }
 
 export class State {
