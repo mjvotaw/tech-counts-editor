@@ -1,9 +1,7 @@
-import { App } from "../../App"
 import { Window, WindowOptions } from "./Window"
 
 export abstract class ResizableWindow extends Window {
   private resizeHandle: HTMLDivElement
-  private mouseDown: boolean = false
 
   constructor(options: WindowOptions) {
     console.log("RESIZABLE WINDOW")
@@ -31,14 +29,12 @@ export abstract class ResizableWindow extends Window {
   }
 
   handleMouseDown() {
-    this.mouseDown = true
     window.addEventListener("mouseup", this.handleMouseUp.bind(this))
     window.addEventListener("mousemove", this.handleResize.bind(this))
   }
 
   handleMouseUp() {
     console.log("handleMouseUp!")
-    this.mouseDown = false
     window.removeEventListener("mouseup", this.handleMouseUp.bind(this))
     window.removeEventListener("mousemove", this.handleResize.bind(this))
   }

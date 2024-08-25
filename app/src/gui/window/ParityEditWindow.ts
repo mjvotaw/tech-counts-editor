@@ -449,7 +449,7 @@ export class ParityEditWindow extends ResizableWindow {
         nodeTextDiv.classList.add("parity-node-cost-avg")
         nodeTextDiv.innerText = nodeText
 
-        nodeTextDiv.addEventListener("click", e => {
+        nodeTextDiv.addEventListener("click", () => {
           nodeCostDiv.classList.toggle("hidden")
         })
 
