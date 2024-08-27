@@ -6,8 +6,12 @@ import { basename, dirname } from "../../util/Path"
 import { EventHandler } from "../../util/EventHandler"
 import { FileHandler } from "../../util/file-handler/FileHandler"
 import { WebFileHandler } from "../../util/file-handler/WebFileHandler"
-import { Foot, WEIGHT_SHORT_NAMES } from "../../util/ParityDataTypes"
-import { TECH_COUNTS, FEET_LABELS } from "../../util/ParityGenInternals"
+import {
+  Foot,
+  WEIGHT_SHORT_NAMES,
+  TECH_COUNTS,
+  FEET_LABELS,
+} from "../../util/ParityDataTypes"
 
 export class ParityEditWindow extends ResizableWindow {
   app: App
@@ -406,6 +410,7 @@ export class ParityEditWindow extends ResizableWindow {
 
         let allCosts = 0
         let costCount = 0
+        let selectedParentCost = -1
 
         for (const [parent_id, cost] of node.ancestors.entries()) {
           const isParentSelected = selectedStateIds.includes(parent_id)
@@ -414,6 +419,7 @@ export class ParityEditWindow extends ResizableWindow {
           const costElem = document.createElement("div")
           costElem.classList.add("parity-node-cost-item")
           if (isParentSelected) {
+            selectedParentCost = Math.round(cost["TOTAL"])
             costElem.classList.add("selected")
           }
           const costParentId = document.createElement("div")
@@ -436,9 +442,7 @@ export class ParityEditWindow extends ResizableWindow {
           nodeCostDiv.appendChild(costElem)
         }
 
-        const avgCost = Math.round(allCosts / costCount)
-
-        const nodeText = `${node.id}: ${parityStr} Avg cost: ${avgCost}`
+        const nodeText = `${node.id}: ${parityStr} cost: ${selectedParentCost}`
 
         const nodeDiv = document.createElement("div")
         nodeDiv.classList.add("parity-node-display-item")

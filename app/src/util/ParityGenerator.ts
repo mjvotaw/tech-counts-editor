@@ -11,6 +11,7 @@ import {
   StepParityGraph,
   StepParityNode,
   BeatOverrides,
+  DEFAULT_WEIGHTS,
 } from "./ParityDataTypes"
 import { ParityGenInternal } from "./ParityGenInternals"
 
@@ -26,47 +27,14 @@ export class ParityGenerator {
   lastParities: Foot[][] = []
   lastTechCounts: number[] = []
 
-  private DEFAULT_WEIGHTS: { [key: string]: number } = {
-    DOUBLESTEP: 850,
-    BRACKETJACK: 20,
-    JACK: 30,
-    JUMP: 0,
-    BRACKETTAP: 400,
-    HOLDSWITCH: 55,
-    MINE: 10000,
-    FOOTSWITCH: 5000,
-    MISSED_FOOTSWITCH: 500,
-    FACING: 2,
-    DISTANCE: 6,
-    SPIN: 1000,
-    SIDESWITCH: 130,
-    CROWDED_BRACKET: 40,
-    OTHER: 0,
-  }
-
-  private WEIGHTS: { [key: string]: number } = {
-    DOUBLESTEP: 850,
-    BRACKETJACK: 20,
-    JACK: 30,
-    JUMP: 0,
-    BRACKETTAP: 400,
-    HOLDSWITCH: 55,
-    MINE: 10000,
-    FOOTSWITCH: 5000,
-    MISSED_FOOTSWITCH: 500,
-    FACING: 2,
-    DISTANCE: 6,
-    SPIN: 1000,
-    SIDESWITCH: 130,
-    CROWDED_BRACKET: 40,
-    OTHER: 0,
-  }
+  private WEIGHTS: { [key: string]: number }
 
   constructor(app: App, type: string) {
     this.app = app
     this.layout = LAYOUT[type]
     this.beatOverrides = new BeatOverrides(this.layout.columnCount)
     this.parityGenInternal = new ParityGenInternal(type)
+    this.WEIGHTS = { ...DEFAULT_WEIGHTS }
   }
 
   help() {
@@ -87,6 +55,21 @@ clear(): clear parity highlights`)
     this.isAnalyzing = true
     const { graph, selectedStates, parities, techCounts } =
       this.parityGenInternal.analyze(notedata, this.beatOverrides, this.WEIGHTS)
+
+    if (this.lastSelectedStates) {
+      const stateDifferences: string[] = []
+      for (let i = 0; i < selectedStates.length; i++) {
+        if (this.lastSelectedStates[i].idx != selectedStates[i].idx) {
+          stateDifferences[
+            i
+          ] = `${this.lastSelectedStates[i].idx} != ${selectedStates[i].idx}`
+        } else {
+          stateDifferences[i] = `${selectedStates[i].idx}`
+        }
+      }
+      console.log("selectedStates diff")
+      console.log(stateDifferences)
+    }
     this.lastGraph = graph
     this.lastSelectedStates = selectedStates
     this.lastParities = parities
@@ -354,7 +337,7 @@ clear(): clear parity highlights`)
 
   getDefaultWeights(): { [key: string]: number } {
     const weightsCopy: { [key: string]: number } = JSON.parse(
-      JSON.stringify(this.DEFAULT_WEIGHTS)
+      JSON.stringify(DEFAULT_WEIGHTS)
     )
     return weightsCopy
   }
@@ -366,6 +349,6 @@ clear(): clear parity highlights`)
   }
 
   resetWeights() {
-    this.updateWeights(this.DEFAULT_WEIGHTS)
+    this.updateWeights(DEFAULT_WEIGHTS)
   }
 }

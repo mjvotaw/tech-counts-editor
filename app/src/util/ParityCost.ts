@@ -1,27 +1,18 @@
-import { Foot, FootPlacement, State, Row } from "./ParityDataTypes"
+import {
+  Foot,
+  OTHER_PART_OF_FOOT,
+  FootPlacement,
+  State,
+  Row,
+  DEFAULT_WEIGHTS,
+} from "./ParityDataTypes"
 
 import { LAYOUT, StageLayout } from "./StageLayouts"
 
 export class ParityCostCalculator {
   private readonly layout: StageLayout
 
-  private WEIGHTS: { [key: string]: number } = {
-    DOUBLESTEP: 850,
-    BRACKETJACK: 20,
-    JACK: 30,
-    JUMP: 30,
-    BRACKETTAP: 400,
-    HOLDSWITCH: 55,
-    MINE: 10000,
-    FOOTSWITCH: 5000,
-    MISSED_FOOTSWITCH: 500,
-    FACING: 2,
-    DISTANCE: 6,
-    SPIN: 1000,
-    SIDESWITCH: 130,
-    CROWDED_BRACKET: 40,
-    OTHER: 500,
-  }
+  private WEIGHTS: { [key: string]: number }
 
   constructor(
     type: string,
@@ -29,7 +20,9 @@ export class ParityCostCalculator {
   ) {
     this.layout = LAYOUT[type]
     if (weights != undefined) {
-      this.WEIGHTS = weights
+      this.WEIGHTS = { ...weights }
+    } else {
+      this.WEIGHTS = { ...DEFAULT_WEIGHTS }
     }
   }
 
@@ -743,7 +736,7 @@ export class ParityCostCalculator {
   // Footswitches are harder to do when they get too slow.
   // Notes with an elapsed time greater than this will incur a penalty
   // 0.25 = 8th notes at 120 bpm
-  private FootswitchMaxElapsedTime = 0.25
+  private FootswitchMaxElapsedTime = 0.2
 
   calcFootswitchCost(
     initialState: State,
@@ -753,6 +746,7 @@ export class ParityCostCalculator {
     elapsedTime: number
   ) {
     let cost = 0
+    let footswitchCount = 0
 
     // ignore footswitch with 24 or less distance (8th note); penalise slower footswitches based on distance
     if (elapsedTime >= this.FootswitchMaxElapsedTime) {
@@ -772,10 +766,13 @@ export class ParityCostCalculator {
 
           if (
             initialState.combinedColumns[i] != resultState.columns[i] &&
-            !resultState.movedFeet.has(initialState.combinedColumns[i])
+            initialState.combinedColumns[i] !=
+              OTHER_PART_OF_FOOT[resultState.columns[i]]
           ) {
-            cost += Math.pow(timeScaled / 2.0, 2) * this.WEIGHTS.FOOTSWITCH
-            break
+            cost +=
+              (timeScaled / (this.FootswitchMaxElapsedTime + timeScaled)) *
+              this.WEIGHTS.FOOTSWITCH
+            footswitchCount += 1
           }
         }
       }
@@ -788,10 +785,11 @@ export class ParityCostCalculator {
     let cost = 0
 
     if (
-      initialState.combinedColumns[0] != resultState.columns[0] &&
       resultState.columns[0] != Foot.NONE &&
       initialState.combinedColumns[0] != Foot.NONE &&
-      !resultState.movedFeet.has(initialState.combinedColumns[0])
+      initialState.combinedColumns[0] != resultState.columns[0] &&
+      initialState.combinedColumns[0] !=
+        OTHER_PART_OF_FOOT[resultState.columns[0]]
     ) {
       cost += this.WEIGHTS.SIDESWITCH
     }
@@ -800,7 +798,8 @@ export class ParityCostCalculator {
       initialState.combinedColumns[3] != resultState.columns[3] &&
       resultState.columns[3] != Foot.NONE &&
       initialState.combinedColumns[3] != Foot.NONE &&
-      !resultState.movedFeet.has(initialState.combinedColumns[3])
+      initialState.combinedColumns[3] !=
+        OTHER_PART_OF_FOOT[resultState.columns[3]]
     ) {
       cost += this.WEIGHTS.SIDESWITCH
     }

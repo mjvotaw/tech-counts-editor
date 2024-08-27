@@ -8,6 +8,13 @@ export enum Foot {
   RIGHT_TOE,
 }
 
+export const FEET = [
+  Foot.LEFT_HEEL,
+  Foot.LEFT_TOE,
+  Foot.RIGHT_HEEL,
+  Foot.RIGHT_TOE,
+]
+
 // Instead of having to write out if((someFootPart == Foot.LEFT_TOE && someOtherPart != Foot.LEFT_HEEL || someFootPart == Foot.LEFT_HEEL && someOtherPart != Foot.LEFT_TOE))
 // get the other part of the foot for a given value, if(OTHER_PART_OF_FOOT[someFootPart] != someOtherPart)
 export const OTHER_PART_OF_FOOT = [
@@ -17,6 +24,15 @@ export const OTHER_PART_OF_FOOT = [
   Foot.RIGHT_TOE,
   Foot.RIGHT_HEEL,
 ]
+
+export const FEET_LABELS = [".", "L", "l", "R", "r"]
+
+export const FEET_LABEL_TO_FOOT: { [key: string]: Foot } = {
+  L: Foot.LEFT_HEEL,
+  l: Foot.LEFT_TOE,
+  R: Foot.RIGHT_HEEL,
+  r: Foot.RIGHT_TOE,
+}
 
 export interface FootPlacement {
   leftHeel: number
@@ -47,6 +63,24 @@ export const ZERO_WEIGHT: { [key: string]: number } = {
   TOTAL: 0,
 }
 
+export const DEFAULT_WEIGHTS: { [key: string]: number } = {
+  DOUBLESTEP: 850,
+  BRACKETJACK: 20,
+  JACK: 30,
+  JUMP: 0,
+  BRACKETTAP: 400,
+  HOLDSWITCH: 55,
+  MINE: 10000,
+  FOOTSWITCH: 325,
+  MISSED_FOOTSWITCH: 500,
+  FACING: 2,
+  DISTANCE: 6,
+  SPIN: 1000,
+  SIDESWITCH: 130,
+  CROWDED_BRACKET: 40,
+  OTHER: 0,
+}
+
 export const WEIGHT_SHORT_NAMES: { [id: string]: string } = {
   DOUBLESTEP: "DST",
   BRACKETJACK: "BRJ",
@@ -66,6 +100,19 @@ export const WEIGHT_SHORT_NAMES: { [id: string]: string } = {
   OVERRIDE: "OVR",
   TOTAL: "TOT",
 }
+
+export enum TechCountsCategory {
+  Crossovers = 0,
+  Footswitches,
+  Sideswitches,
+  Jacks,
+  Brackets,
+  Doublesteps,
+  NUM_TechCountsCategory,
+  Invalid,
+}
+
+export const TECH_COUNTS = ["XO", "FS", "SS", "JA", "BR", "DS"]
 
 export class State {
   idx: number = -1
