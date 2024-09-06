@@ -48,6 +48,7 @@ export const ZERO_WEIGHT: { [key: string]: number } = {
   BRACKETJACK: 0,
   JACK: 0,
   JUMP: 0,
+  SLOW_BRACKET: 0,
   BRACKETTAP: 0,
   HOLDSWITCH: 0,
   MINE: 0,
@@ -68,6 +69,7 @@ export const DEFAULT_WEIGHTS: { [key: string]: number } = {
   BRACKETJACK: 20,
   JACK: 30,
   JUMP: 0,
+  SLOW_BRACKET: 30,
   BRACKETTAP: 400,
   HOLDSWITCH: 55,
   MINE: 10000,
@@ -77,7 +79,7 @@ export const DEFAULT_WEIGHTS: { [key: string]: number } = {
   DISTANCE: 6,
   SPIN: 1000,
   SIDESWITCH: 130,
-  CROWDED_BRACKET: 40,
+  CROWDED_BRACKET: 0,
   OTHER: 0,
 }
 
@@ -86,6 +88,7 @@ export const WEIGHT_SHORT_NAMES: { [id: string]: string } = {
   BRACKETJACK: "BRJ",
   JACK: "JAK",
   JUMP: "JMP",
+  SLOW_BRACKET: "SLWB",
   BRACKETTAP: "BRT",
   HOLDSWITCH: "HLS",
   MINE: "MNE",

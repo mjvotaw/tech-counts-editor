@@ -178,6 +178,12 @@ export class ParityCostCalculator {
     )
 
     costs["JUMP"] = this.calcJumpCost(row, movedLeft, movedRight, elapsedTime)
+    costs["SLOW_BRACKET"] = this.calcSlowBracketCost(
+      row,
+      movedLeft,
+      movedRight,
+      elapsedTime
+    )
 
     if (combinedPlacement.leftToe == -1)
       combinedPlacement.leftToe = combinedPlacement.leftHeel
@@ -633,6 +639,26 @@ export class ParityCostCalculator {
       row.notes.filter(note => note !== undefined).length >= 2
     ) {
       cost += this.WEIGHTS.JUMP / elapsedTime
+    }
+
+    return cost
+  }
+
+  private slowBracketThreshold = 0.2
+  calcSlowBracketCost(
+    row: Row,
+    movedLeft: boolean,
+    movedRight: boolean,
+    elapsedTime: number
+  ) {
+    let cost = 0
+
+    if (
+      elapsedTime > this.slowBracketThreshold &&
+      movedLeft != movedRight &&
+      row.notes.filter(note => note !== undefined).length >= 2
+    ) {
+      cost += this.WEIGHTS.SLOW_BRACKET / elapsedTime
     }
 
     return cost

@@ -22,6 +22,7 @@ import {
   StepParityGraph,
   BeatOverrides,
   ZERO_WEIGHT,
+  TechCountsCategory,
 } from "./ParityDataTypes"
 import { ParityCostCalculator } from "./ParityCost"
 import { calculateTechCounts } from "./TechCounts"
@@ -34,6 +35,9 @@ export const FEET = [
 ]
 
 export const FEET_LABELS = [".", "L", "l", "R", "r"]
+
+const TECH_THRESHOLDS: number[] = []
+TECH_THRESHOLDS[TechCountsCategory.Jacks] = 0.176
 
 export class ParityGenInternal {
   costCalculator: ParityCostCalculator
@@ -68,7 +72,11 @@ export class ParityGenInternal {
     const selectedStates = this.selectStatesForRows(graph, rows.length)
     const parities = selectedStates.map(s => s.columns)
     this.setNoteParity(rows, parities, beatOverrides)
-    const techCounts = calculateTechCounts(rows, this.layout.columnCount)
+    const techCounts = calculateTechCounts(
+      rows,
+      this.layout.columnCount,
+      TECH_THRESHOLDS
+    )
 
     return { graph, selectedStates, parities, techCounts }
   }

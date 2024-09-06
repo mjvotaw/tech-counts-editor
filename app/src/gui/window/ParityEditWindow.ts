@@ -61,8 +61,8 @@ export class ParityEditWindow extends ResizableWindow {
     EventHandler.off("smLoaded", this.resetParity.bind(this))
     EventHandler.off("chartLoaded", this.resetParity.bind(this))
     EventHandler.off("chartModified", this.resetParity.bind(this))
-    EventHandler.off("snapToTickChanged", this.updateParityDisplay.bind(this))
-    EventHandler.off("parityUpdated", this.updateParityDisplay.bind(this))
+    EventHandler.off("snapToTickChanged", this.updateDisplay.bind(this))
+    EventHandler.off("parityUpdated", this.updateDisplay.bind(this))
   }
 
   // View building
@@ -81,7 +81,7 @@ export class ParityEditWindow extends ResizableWindow {
 
     this.viewElement.appendChild(this.innerContainer)
     this.resetParity()
-    this.updateParityDisplay()
+    this.updateDisplay()
   }
 
   addParityDisplay() {
@@ -316,10 +316,10 @@ export class ParityEditWindow extends ResizableWindow {
     EventHandler.on("chartModified", this.resetParity.bind(this))
 
     const updateDisplay = () => {
-      this.updateParityDisplay()
+      this.updateDisplay()
     }
-    EventHandler.on("snapToTickChanged", this.updateParityDisplay.bind(this))
-    EventHandler.on("parityUpdated", this.updateParityDisplay.bind(this))
+    EventHandler.on("snapToTickChanged", updateDisplay)
+    EventHandler.on("parityUpdated", updateDisplay)
 
     this.windowElement.addEventListener("closingWindow", function () {
       EventHandler.off("smLoaded", reloadParity)
@@ -330,17 +330,13 @@ export class ParityEditWindow extends ResizableWindow {
     })
   }
 
-  updateParityDisplay() {
+  updateDisplay() {
     if (this.app.chartManager == undefined || window.Parity == undefined) {
       return
     }
     const beat = this.app.chartManager?.getBeat()
     const parity = window.Parity?.getParityForBeat(beat)
     const overrides = window.Parity?.getBeatOverride(beat)
-    const techCounts = window.Parity?.lastTechCounts ?? []
-    const nodes = window.Parity?.getAllNodesForBeat(beat)
-    const selectedStates = window.Parity?.lastSelectedStates ?? []
-    const selectedStateIds = selectedStates.map(s => s.idx)
 
     const optionLabels = [
       "None",
@@ -381,6 +377,12 @@ export class ParityEditWindow extends ResizableWindow {
       }
     }
 
+    this.updateTechCounts()
+    this.updateNodes()
+  }
+
+  updateTechCounts() {
+    const techCounts = window.Parity?.lastTechCounts ?? []
     const techCountsStringParts: string[] = []
     for (let i = 0; i < TECH_COUNTS.length; i++) {
       const tc = techCounts[i] ?? 0
@@ -388,14 +390,20 @@ export class ParityEditWindow extends ResizableWindow {
     }
 
     if (this.techCountsDisplayContainer) {
-      this.techCountsDisplayContainer.innerText =
+      this.techCountsDisplayContainer.innerHTML =
         techCountsStringParts.join(" ")
     }
+  }
 
+  updateNodes() {
+    const beat = this.app.chartManager?.getBeat()
+    const nodes = window.Parity?.getAllNodesForBeat(beat)
+    const selectedStates = window.Parity?.lastSelectedStates ?? []
+    const selectedStateIds = selectedStates.map(s => s.idx)
     // this is a whole bunch of code for displaying all of the nodes for a given row,
     // and the weights that make up the costs for each parent node.
     const nodeDisplay = this.nodeDisplayContainer
-    if (nodeDisplay) {
+    if (nodes && nodeDisplay) {
       nodeDisplay.textContent = ""
 
       nodes.forEach(node => {
