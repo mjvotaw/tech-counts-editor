@@ -38,6 +38,8 @@ export const FEET_LABELS = [".", "L", "l", "R", "r"]
 
 const TECH_THRESHOLDS: number[] = []
 TECH_THRESHOLDS[TechCountsCategory.Jacks] = 0.176
+TECH_THRESHOLDS[TechCountsCategory.Footswitches] = 0.3
+TECH_THRESHOLDS[TechCountsCategory.Doublesteps] = 0.235
 
 export class ParityGenInternal {
   costCalculator: ParityCostCalculator

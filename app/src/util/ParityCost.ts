@@ -185,6 +185,12 @@ export class ParityCostCalculator {
       elapsedTime
     )
 
+    costs["TWISTED_FOOT"] = this.calcTwistedFoot(
+      row,
+      combinedPlacement,
+      elapsedTime
+    )
+
     if (combinedPlacement.leftToe == -1)
       combinedPlacement.leftToe = combinedPlacement.leftHeel
     if (combinedPlacement.rightToe == -1)
@@ -644,7 +650,7 @@ export class ParityCostCalculator {
     return cost
   }
 
-  private slowBracketThreshold = 0.2
+  private slowBracketThreshold = 0.15
   calcSlowBracketCost(
     row: Row,
     movedLeft: boolean,
@@ -658,10 +664,47 @@ export class ParityCostCalculator {
       movedLeft != movedRight &&
       row.notes.filter(note => note !== undefined).length >= 2
     ) {
-      cost += this.WEIGHTS.SLOW_BRACKET / elapsedTime
+      const timediff = elapsedTime - this.slowBracketThreshold
+      cost += timediff * this.WEIGHTS.SLOW_BRACKET
     }
 
     return cost
+  }
+
+  // Does this placement result in one of the feet being twisted around?
+  // This should probably be getting filtered out as an invalid positioning before we
+  // even get here, but :shrug:
+  calcTwistedFoot(
+    row: Row,
+    combinedPlacement: FootPlacement,
+    elapsedTime: number
+  ) {
+    const leftPos = this.layout.averagePoint(
+      combinedPlacement.leftHeel,
+      combinedPlacement.leftToe
+    )
+    const rightPos = this.layout.averagePoint(
+      combinedPlacement.rightHeel,
+      combinedPlacement.rightToe
+    )
+
+    const crossedOver = rightPos.x < leftPos.x
+    const rightBackwards =
+      combinedPlacement.rightHeel != -1 && combinedPlacement.rightToe != -1
+        ? this.layout.layout[combinedPlacement.rightToe].y <
+          this.layout.layout[combinedPlacement.rightHeel].y
+        : false
+
+    const leftBackwards =
+      combinedPlacement.leftHeel != -1 && combinedPlacement.leftToe != -1
+        ? this.layout.layout[combinedPlacement.leftToe].y <
+          this.layout.layout[combinedPlacement.leftHeel].y
+        : false
+
+    if (!crossedOver && (rightBackwards || leftBackwards)) {
+      return this.WEIGHTS.TWISTED_FOOT
+    }
+    return 0
   }
 
   calcFacingCost(combinedPlacement: FootPlacement) {
@@ -762,8 +805,9 @@ export class ParityCostCalculator {
   // Footswitches are harder to do when they get too slow.
   // Notes with an elapsed time greater than this will incur a penalty
   // 0.25 = 8th notes at 120 bpm
-  private FootswitchMaxElapsedTime = 0.2
+  private SlowFootswitchThrshold = 0.2
 
+  private SlowFootswitchIgnore = 0.4
   calcFootswitchCost(
     initialState: State,
     resultState: State,
@@ -775,13 +819,16 @@ export class ParityCostCalculator {
     let footswitchCount = 0
 
     // ignore footswitch with 24 or less distance (8th note); penalise slower footswitches based on distance
-    if (elapsedTime >= this.FootswitchMaxElapsedTime) {
+    if (
+      elapsedTime >= this.SlowFootswitchThrshold &&
+      elapsedTime < this.SlowFootswitchIgnore
+    ) {
       // footswitching has no penalty if there's a mine nearby
       if (
         !row.mines.some(x => x !== undefined) &&
         !row.fakeMines.some(x => x !== undefined)
       ) {
-        const timeScaled = elapsedTime - this.FootswitchMaxElapsedTime
+        const timeScaled = elapsedTime - this.SlowFootswitchThrshold
 
         for (let i = 0; i < combinedColumns.length; i++) {
           if (
@@ -796,7 +843,7 @@ export class ParityCostCalculator {
               OTHER_PART_OF_FOOT[resultState.columns[i]]
           ) {
             cost +=
-              (timeScaled / (this.FootswitchMaxElapsedTime + timeScaled)) *
+              (timeScaled / (this.SlowFootswitchThrshold + timeScaled)) *
               this.WEIGHTS.FOOTSWITCH
             footswitchCount += 1
           }
@@ -889,15 +936,31 @@ export class ParityCostCalculator {
       if (foot == Foot.NONE) {
         continue
       }
+      const initialPosition = initialState.combinedColumns.indexOf(foot)
+      if (initialPosition == -1) continue
 
-      const idxFoot = initialState.combinedColumns.indexOf(foot)
-      if (idxFoot == -1) continue
-      const dist =
-        (Math.sqrt(
-          this.layout.getDistanceSq(idxFoot, resultState.columns.indexOf(foot))
-        ) *
+      const resultPosition = resultState.columns.indexOf(foot)
+
+      // If we're bracketing something, and the toes are now where the heel
+      // was, then we don't need to worry about it, we're not actually moving
+      // the foot very far
+      const isBracketing = resultState.columns.includes(
+        OTHER_PART_OF_FOOT[foot]
+      )
+      if (
+        isBracketing &&
+        resultState.columns.indexOf(OTHER_PART_OF_FOOT[foot]) == initialPosition
+      ) {
+        continue
+      }
+
+      let dist =
+        (Math.sqrt(this.layout.getDistanceSq(initialPosition, resultPosition)) *
           this.WEIGHTS.DISTANCE) /
         elapsedTime
+      if (isBracketing) {
+        dist = dist * 0.2
+      }
       cost += dist
     }
     return cost
