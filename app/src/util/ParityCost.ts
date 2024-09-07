@@ -185,11 +185,7 @@ export class ParityCostCalculator {
       elapsedTime
     )
 
-    costs["TWISTED_FOOT"] = this.calcTwistedFoot(
-      row,
-      combinedPlacement,
-      elapsedTime
-    )
+    costs["TWISTED_FOOT"] = this.calcTwistedFoot(combinedPlacement)
 
     if (combinedPlacement.leftToe == -1)
       combinedPlacement.leftToe = combinedPlacement.leftHeel
@@ -674,11 +670,7 @@ export class ParityCostCalculator {
   // Does this placement result in one of the feet being twisted around?
   // This should probably be getting filtered out as an invalid positioning before we
   // even get here, but :shrug:
-  calcTwistedFoot(
-    row: Row,
-    combinedPlacement: FootPlacement,
-    elapsedTime: number
-  ) {
+  calcTwistedFoot(combinedPlacement: FootPlacement) {
     const leftPos = this.layout.averagePoint(
       combinedPlacement.leftHeel,
       combinedPlacement.leftToe

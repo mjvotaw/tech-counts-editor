@@ -80,7 +80,7 @@ export function calculateTechCountsForRow(
 
   const previousFootPlacement: number[] = previousRow
     ? getFootPlacement(previousRow, columnCount)
-    : emptyFootPlacement(columnCount)
+    : emptyFootPlacement()
   const previousColumns: Foot[] = previousRow
     ? getColumns(previousRow, columnCount)
     : emptyColumns(columnCount)
@@ -201,7 +201,7 @@ export function calculateTechCountsForRow(
   return techs
 }
 
-function emptyFootPlacement(columnCount: number) {
+function emptyFootPlacement() {
   const footPlacement: number[] = []
   for (let i = 0; i <= FEET.length; i++) {
     footPlacement.push(-1)
@@ -209,7 +209,7 @@ function emptyFootPlacement(columnCount: number) {
   return footPlacement
 }
 function getFootPlacement(row: Row, columnCount: number) {
-  const footPlacement: number[] = emptyFootPlacement(columnCount)
+  const footPlacement: number[] = emptyFootPlacement()
 
   for (let c = 0; c < columnCount; c++) {
     const currentNote = row.notes[c]
